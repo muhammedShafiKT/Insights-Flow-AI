@@ -1,7 +1,17 @@
+import { useEffect } from "react"
 import Approutes from "./routes/Approutes"
 import { Toaster } from "react-hot-toast"
+import api from "./services/api"
+import { useDispatch } from "react-redux"
+import { loginSuccess } from "./features/auth.slice"
 
 function App() {
+  const dispatch = useDispatch()
+    useEffect(() => {
+    api.get("/auth/getme")
+      .then((res) => dispatch(loginSuccess(res.data.user)))
+      .catch(() => {})
+  }, [])
   return (
     <>
       <Toaster

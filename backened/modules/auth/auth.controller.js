@@ -72,3 +72,12 @@ export const login = async(req,res)=>{
         return res.status(error.statusCode||500).json({message : error.message})
     }
     }
+
+    export const googleCallback = async (req, res) => {
+    try {
+        const result = await authService.googleLogin(req, res)
+        res.redirect(`${process.env.CLIENT_URL}/home`)
+    } catch (error) {
+        res.redirect(`${process.env.CLIENT_URL}/login`)
+    }
+}

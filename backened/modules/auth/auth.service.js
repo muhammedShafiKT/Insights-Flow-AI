@@ -257,7 +257,31 @@ const authService = {
         await user.save()
 
         return { message: "Password reset successful" }
-    }
+    },
+    googleLogin: async (req, res) => {
+    const user = req.user // set by passport
+
+    const refreshtoken = generateRefreshtoken(user)
+    const accesstoken = generateAccesstoken(user)
+
+    user.refreshToken = refreshtoken
+    await user.save()
+
+    res.cookie("accesstoken", accesstoken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 15 * 60 * 1000
+    })
+    res.cookie("refreshtoken", refreshtoken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+
+    return { message: "Google login successful" }
+}
 }
 
 export default authService

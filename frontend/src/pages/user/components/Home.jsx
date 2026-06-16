@@ -1,150 +1,199 @@
 import { Link } from "react-router-dom"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import Navbar from "./Navbar"
-
-const chartData = [
-  { month: "Jan", value: 65 },
-  { month: "Feb", value: 85 },
-  { month: "Mar", value: 95 },
-  { month: "Apr", value: 80 },
-]
-
-const stats = [
-  { value: "12,000+", label: "Datasets Analysed" },
-  { value: "98%", label: "Query Accuracy" },
-  { value: "<2s", label: "Response Time" },
-  { value: "500+", label: "Users" },
-]
 
 const features = [
   {
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14a9 3 0 0 0 18 0V5" /><path d="M3 12a9 3 0 0 0 18 0" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
       </svg>
     ),
-    bg: "bg-blue-500",
-    title: "Upload & Process",
-    desc: "Drag and drop CSV or XLSX files. We handle the rest with intelligent schema detection.",
+    title: "Instant Uploads",
+    desc: "Drop CSV, XLSX, or JSON files directly into the workspace. Our engine auto-detects schemas and prepares data for immediate analysis.",
+    link: "Learn more",
+    highlight: false,
   },
   {
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
       </svg>
     ),
-    bg: "bg-emerald-500",
-    title: "Ask in English",
-    desc: "Natural language queries powered by GPT-4. No SQL knowledge required.",
+    title: "Natural Language Queries",
+    desc: 'Forget complex SQL. Simply ask "Which product had the highest margin in July?" and get a detailed response with citations from your data source.',
+    link: "Try queries",
+    highlight: true,
   },
   {
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
       </svg>
     ),
-    bg: "bg-orange-500",
-    title: "Visualise Instantly",
-    desc: "Auto-generated charts and dashboards. Pin your favorite insights.",
+    title: "Auto-Dashboards",
+    desc: "InsightFlow automatically generates multi-view dashboards based on the shape of your data. Highlighting trends and anomalies before you even ask.",
+    link: "View samples",
+    highlight: false,
   },
+]
+
+// Deterministic bar heights for the terminal chart (no randomness => stable render)
+const bars = [
+  20, 28, 18, 35, 30, 45, 40, 55, 50, 65, 58, 72, 68, 80, 75, 88, 82, 95, 90,
+  98, 92, 85, 78, 70,
 ]
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white font-sans">
-
       {/* Navbar */}
-   <Navbar/>
+      <Navbar />
 
       {/* Hero */}
-      <section className="relative overflow-hidden px-8 pt-24 pb-20">
-        {/* bg grid */}
+      <section className="relative overflow-hidden px-8 pt-20 pb-16 text-center">
         <div
           className="pointer-events-none absolute inset-0 opacity-30"
           style={{
             backgroundImage:
               "linear-gradient(to right, rgba(99,102,241,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(99,102,241,0.1) 1px, transparent 1px)",
             backgroundSize: "48px 48px",
-            maskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%)",
-            WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%)",
+            maskImage:
+              "radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 75%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 75%)",
           }}
         />
-        <div className="pointer-events-none absolute left-1/4 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/20 blur-[120px]" />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-600/20 blur-[120px]" />
 
-        <div className="relative max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
-          {/* Left */}
-          <div className="flex-1">
-            <h1 className="text-5xl md:text-6xl font-bold leading-tight tracking-tight text-white">
-              Upload Any Dataset.{" "}
-              <span className="text-indigo-400">Ask Questions</span>{" "}
-              in Plain English.
-            </h1>
-            <p className="mt-6 text-lg text-slate-400 max-w-lg">
-              Transform your data into insights with AI-powered analytics. No SQL required.
-            </p>
-            <div className="mt-8 flex items-center gap-4">
-              <Link
-                to="/register"
-                className="px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 font-semibold text-white transition shadow-[0_8px_30px_-8px_rgba(99,102,241,0.9)]"
-              >
-                Get Started Free
-              </Link>
-              <button className="px-6 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold text-white transition">
-                View Demo
-              </button>
-            </div>
-          </div>
+        <div className="relative max-w-3xl mx-auto">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium tracking-wide text-indigo-300">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z" />
+            </svg>
+            NEXT-GEN INTELLIGENCE
+          </span>
 
-          {/* Right - AI Chart Card */}
-          <div className="flex-1 w-full">
-            <div className="rounded-2xl border border-indigo-500/30 bg-[#0f172a] p-5 shadow-[0_0_60px_-12px_rgba(99,102,241,0.4)]">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-bold">AI</div>
-                <span className="text-sm text-slate-300">Here's the sales trend for Q1 2026:</span>
-              </div>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={chartData} barSize={40}>
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
-                  <YAxis hide />
-                  <Tooltip
-                    contentStyle={{ background: "#1e293b", border: "none", borderRadius: 8, color: "#f1f5f9" }}
-                    cursor={{ fill: "rgba(99,102,241,0.1)" }}
-                  />
-                  <Bar dataKey="value" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <h1 className="mt-6 text-5xl md:text-6xl font-bold leading-tight tracking-tight">
+            <span className="text-indigo-400">AI-Powered Data Analytics</span> for
+            <br />
+            the Modern Enterprise
+          </h1>
+
+          <p className="mt-6 text-base text-slate-400 max-w-xl mx-auto">
+            Transform messy data into actionable intelligence. Use natural language to
+            query, visualize, and scale your insights across the entire organization
+            instantly.
+          </p>
+
+          <div className="mt-8 flex items-center justify-center gap-4">
+            <Link
+              to="/register"
+              className="px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 font-semibold text-white transition shadow-[0_8px_30px_-8px_rgba(99,102,241,0.9)]"
+            >
+              Get Started Free
+            </Link>
+            <button className="px-6 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold text-white transition">
+              Request Demo
+            </button>
           </div>
         </div>
-      </section>
 
-      {/* Stats */}
-      <section className="border-y border-white/5 bg-white/[0.02] px-8 py-12">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <div className="text-4xl font-bold text-white">{s.value}</div>
-              <div className="mt-1 text-sm text-slate-400">{s.label}</div>
+        {/* Terminal card */}
+        <div className="relative max-w-4xl mx-auto mt-16">
+          <div className="rounded-2xl border border-white/10 bg-[#0d1326] shadow-[0_0_60px_-12px_rgba(99,102,241,0.4)] overflow-hidden text-left">
+            {/* title bar */}
+            <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+              <span className="h-3 w-3 rounded-full bg-red-400/80" />
+              <span className="h-3 w-3 rounded-full bg-yellow-400/80" />
+              <span className="h-3 w-3 rounded-full bg-green-400/80" />
+              <span className="ml-2 text-xs text-slate-400">InsightFlow Analysis Terminal v2.4</span>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="h-5 w-16 rounded bg-white/5" />
+                <span className="h-5 w-5 rounded bg-white/5" />
+              </div>
             </div>
-          ))}
+
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-5 p-5">
+              {/* AI assistant panel */}
+              <div className="rounded-xl border border-white/5 bg-[#0a0f1e] p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  AI Assistant
+                </div>
+                <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-300">
+                  "Show me the revenue growth by region for Q3."
+                </div>
+                <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 px-3 py-2 text-xs text-indigo-200">
+                  Processing query... Generating visualization for EMEA and APAC regions.
+                </div>
+              </div>
+
+              {/* Chart panel */}
+              <div className="flex flex-col gap-3">
+                <div className="rounded-xl border border-white/5 bg-[#0a0f1e] p-4 h-[180px] flex items-end gap-1">
+                  {bars.map((h, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-t-sm"
+                      style={{
+                        height: `${h}%`,
+                        background: `linear-gradient(to top, #6366f1, #a855f7 ${100 - h}%)`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/5 bg-[#0a0f1e] p-3 text-center">
+                    <div className="text-xs text-slate-400">Growth Index</div>
+                    <div className="mt-1 text-lg font-bold text-indigo-300">+24.8%</div>
+                  </div>
+                  <div className="rounded-xl border border-white/5 bg-[#0a0f1e] p-3 text-center">
+                    <div className="text-xs text-slate-400">Confidence Score</div>
+                    <div className="mt-1 text-lg font-bold text-indigo-300">98.2%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Features */}
       <section className="px-8 py-24">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-white mb-12">Everything you need</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-white mb-3">Powerful Features for Data Teams</h2>
+          <p className="text-slate-400 mb-12">
+            Everything you need to turn raw data into decisions in minutes, not days.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
             {features.map((f) => (
               <div
                 key={f.title}
-                className="rounded-2xl border border-white/10 bg-[#0f172a] p-7 hover:border-indigo-500/30 transition-all duration-300"
+                className={`rounded-2xl border p-7 transition-all duration-300 ${
+                  f.highlight
+                    ? "border-indigo-500/40 bg-[#0f1730]"
+                    : "border-white/10 bg-[#0f172a] hover:border-indigo-500/30"
+                }`}
               >
-                <div className={`h-14 w-14 rounded-2xl ${f.bg} flex items-center justify-center text-white mb-5 shadow-lg`}>
+                <div
+                  className={`h-11 w-11 rounded-xl flex items-center justify-center mb-5 ${
+                    f.highlight ? "bg-indigo-500 text-white" : "bg-white/5 text-slate-300"
+                  }`}
+                >
                   {f.icon}
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
+                <p className="text-sm text-slate-400 leading-relaxed mb-4">{f.desc}</p>
+                <a href="#" className="text-sm font-medium text-indigo-400 hover:text-indigo-300 inline-flex items-center gap-1">
+                  {f.link} <span aria-hidden>→</span>
+                </a>
               </div>
             ))}
           </div>
@@ -152,52 +201,82 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="px-8 py-20 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-4xl font-bold text-white mb-4">Ready to get started?</h2>
-          <p className="text-slate-400 mb-8">Join 500+ users already turning data into decisions.</p>
-          <Link
-            to="/register"
-            className="inline-block px-8 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 font-semibold text-white transition shadow-[0_8px_30px_-8px_rgba(99,102,241,0.9)]"
-          >
-            Start for Free
-          </Link>
+      <section className="px-8 pb-24">
+        <div className="max-w-5xl mx-auto rounded-3xl bg-indigo-400 px-8 py-16 text-center">
+          <h2 className="text-4xl font-bold text-indigo-950 mb-4">Ready to unlock your data?</h2>
+          <p className="text-indigo-900/80 mb-8 max-w-xl mx-auto">
+            Join 500+ enterprises leveraging InsightFlow AI to stay ahead of the curve.
+            Get started with a 14-day free trial today.
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <Link
+              to="/register"
+              className="px-6 py-3 rounded-xl bg-[#0a0f1e] hover:bg-[#11182f] font-semibold text-white transition"
+            >
+              Get Started Now
+            </Link>
+            <button className="px-6 py-3 rounded-xl bg-indigo-300/40 hover:bg-indigo-300/60 font-semibold text-indigo-950 transition">
+              Talk to Sales
+            </button>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 px-8 py-8">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="text-slate-400 font-semibold">InsightFlow AI</span>
-          <div className="flex items-center gap-6 text-sm text-slate-400">
-            <a href="#" className="hover:text-white transition-colors">Product</a>
-            <a href="#" className="hover:text-white transition-colors">Pricing</a>
-            <a href="#" className="hover:text-white transition-colors">Docs</a>
-            <a href="#" className="hover:text-white transition-colors">Contact</a>
+      <footer className="border-t border-white/5 px-8 py-12">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr_1fr] gap-8">
+          <div>
+            <span className="text-white font-semibold">InsightFlow AI</span>
+            <p className="mt-3 text-sm text-slate-400 max-w-xs">
+              Empowering data-driven decisions with next-generation artificial
+              intelligence and intuitive analytics tools.
+            </p>
           </div>
+
+          <div>
+            <div className="text-xs font-semibold tracking-wide text-slate-300 mb-3">PRODUCT</div>
+            <div className="flex flex-col gap-2 text-sm text-slate-400">
+              <a href="#" className="hover:text-white transition-colors">Features</a>
+              <a href="#" className="hover:text-white transition-colors">Integrations</a>
+              <a href="#" className="hover:text-white transition-colors">Enterprise</a>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs font-semibold tracking-wide text-slate-300 mb-3">RESOURCES</div>
+            <div className="flex flex-col gap-2 text-sm text-slate-400">
+              <a href="#" className="hover:text-white transition-colors">Documentation</a>
+              <a href="#" className="hover:text-white transition-colors">API Reference</a>
+              <a href="#" className="hover:text-white transition-colors">Blog</a>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs font-semibold tracking-wide text-slate-300 mb-3">COMPANY</div>
+            <div className="flex flex-col gap-2 text-sm text-slate-400">
+              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="#" className="hover:text-white transition-colors">Contact</a>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto mt-10 pt-6 border-t border-white/5 flex items-center justify-between">
+          <span className="text-xs text-slate-500">© 2024 InsightFlow AI. All rights reserved.</span>
           <div className="flex items-center gap-4 text-slate-400">
-            {/* GitHub */}
             <a href="#" className="hover:text-white transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12" />
-              </svg>
-            </a>
-            {/* Twitter */}
-            <a href="#" className="hover:text-white transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
             </a>
-            {/* LinkedIn */}
             <a href="#" className="hover:text-white transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
               </svg>
             </a>
           </div>
         </div>
       </footer>
-
     </div>
   )
 }

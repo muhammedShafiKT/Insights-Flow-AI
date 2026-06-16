@@ -11,12 +11,12 @@ function Navbar() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-async function handleLogout() {
+  async function handleLogout() {
     try {
       const res = await api.post("/auth/logout")
       console.log("logout res", res)
     } catch (err) {
-      console.log("logout error", err)  
+      console.log("logout error", err)
     } finally {
       dispatch(logout())
       navigate("/login")
@@ -36,10 +36,9 @@ async function handleLogout() {
         </div>
 
         <div className="hidden md:flex items-center gap-8 text-sm text-slate-400">
-          <a href="#" className="hover:text-white transition-colors">Home</a>
-          <a href="#" className="hover:text-white transition-colors">Datasets</a>
-          <a href="#" className="hover:text-white transition-colors">Contact</a>
-          <a href="#" className="hover:text-white transition-colors">Blog</a>
+          <a href="#" className="hover:text-white transition-colors">Features</a>
+          <a href="#" className="hover:text-white transition-colors">Pricing</a>
+          <a href="#" className="hover:text-white transition-colors">About</a>
         </div>
 
         {/* Show different UI based on auth state */}
@@ -60,9 +59,9 @@ async function handleLogout() {
         ) : (
           <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm text-slate-300 hover:text-white transition-colors px-4 py-2">
-              Login
+              Sign In
             </Link>
-            <Link to="/register" className="text-sm font-semibold bg-indigo-500 hover:bg-indigo-400 transition px-4 py-2 rounded-lg shadow-[0_0_20px_-4px_rgba(99,102,241,0.8)]">
+            <Link to="/register" className="text-sm font-semibold bg-indigo-500 hover:bg-indigo-400 transition px-4 py-1.5 rounded-lg shadow-[0_0_20px_-4px_rgba(99,102,241,0.8)]">
               Get Started
             </Link>
           </div>

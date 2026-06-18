@@ -6,6 +6,10 @@ import {
   deleteFromR2,
   listUserFiles,
 } from "./r2Storage.service.js";
+import { Dataparser, ExtractMetadata } from "./datasetParser.service.js";
+import { extractColumns } from "../../services/profiling/extractColumns.js";
+import { generateProfile } from "../../services/profiling/generateProfile.js";
+
 
 export const uploadDataset = async (req, res) => {
   try {
@@ -14,6 +18,23 @@ export const uploadDataset = async (req, res) => {
     }
 
     const ext = path.extname(req.file.originalname).slice(1).toLowerCase();
+    console.log(req.file)
+    const rows = Dataparser(req.file.buffer, ext)
+    if (!rows.length) {
+  return res.status(400).json({
+    success: false,
+    message: "Dataset contains no rows"
+  });
+}
+
+const columns = extractColumns(rows)
+const profile = generateProfile(columns)
+console.log("profile generator works");
+    const metadata = ExtractMetadata(rows)
+ 
+    
+// console.log(columns)
+//     console.log(metadata)
 
     const { key, size } = await uploadtoR2(
       req.file.buffer,
@@ -28,6 +49,11 @@ export const uploadDataset = async (req, res) => {
       r2Key: key,
       fileType: ext,
       sizeBytes: size,
+      rowCount: metadata.rowCount,
+      columnCount: metadata.columnCount,
+      columns: metadata.columns,
+      profile,
+      previewRows : rows.slice(0,10),
       status: "uploaded",
     });
 
@@ -76,3 +102,28 @@ export const listDatasets = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+export const datasetPreview = async (req,res)=>{
+  try {
+    const dataset = await Dataset.findOne({
+      _id: req.params.id,
+      userId : req.user.userId
+    })
+    if(!dataset){
+      return res.status(404).json({
+        success :false,
+        message :"Dataset not found"
+      })
+    }
+       res.json({
+        success :true,
+        columns : dataset.columns,
+        rows :dataset.previewRows
+      })
+  } catch (error) {
+    res.status(500).json({
+        success: false,
+      message: error.message,
+    })
+  }
+}

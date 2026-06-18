@@ -5,7 +5,9 @@ import Home from '../pages/user/components/Home'
 import Register from '../pages/user/auth/Register'
 import ForgotPassword from '../pages/user/auth/Forgotpassword'
 import VerifyOtp from '../pages/user/auth/VerifyOtp'
-import DatasetUpload from '../pages/user/datasets/DatasetUpload'
+
+import DatasetWorkspace from '../pages/user/datasets/Datasetworkspace'
+import AppLayout from '../pages/user/Layout/Applayout'
 
 function Approutes() {
   return (
@@ -16,7 +18,18 @@ function Approutes() {
     <Route path='/register' Component={Register} />
     <Route path='/forgot-password' Component={ForgotPassword} />
     <Route path='/verify-otp' Component={VerifyOtp} />
-    <Route path='/datasets' Component={DatasetUpload} />
+    
+    
+      <Route
+        path='/datasets'
+        element={
+          <AppLayout pageTitle="Workspace">
+            <DatasetWorkspace />
+          </AppLayout>
+        }
+      />
+   
+    
    </Routes>
   )
 }

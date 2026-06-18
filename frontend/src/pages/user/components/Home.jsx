@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import Navbar from "./Navbar"
+import { useSelector } from "react-redux"
 
 const features = [
   {
@@ -48,6 +49,7 @@ const bars = [
 ]
 
 export default function Home() {
+  const user = useSelector((state)=>state.auth.user)
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white font-sans">
       {/* Navbar */}
@@ -91,10 +93,9 @@ export default function Home() {
 
           <div className="mt-8 flex items-center justify-center gap-4">
             <Link
-              to="/register"
+              to={user ? "/datasets" : "/register"}
               className="px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 font-semibold text-white transition shadow-[0_8px_30px_-8px_rgba(99,102,241,0.9)]"
-            >
-              Get Started Free
+            >              Get Started Free
             </Link>
             <button className="px-6 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold text-white transition">
               Request Demo
@@ -176,16 +177,14 @@ export default function Home() {
             {features.map((f) => (
               <div
                 key={f.title}
-                className={`rounded-2xl border p-7 transition-all duration-300 ${
-                  f.highlight
+                className={`rounded-2xl border p-7 transition-all duration-300 ${f.highlight
                     ? "border-indigo-500/40 bg-[#0f1730]"
                     : "border-white/10 bg-[#0f172a] hover:border-indigo-500/30"
-                }`}
+                  }`}
               >
                 <div
-                  className={`h-11 w-11 rounded-xl flex items-center justify-center mb-5 ${
-                    f.highlight ? "bg-indigo-500 text-white" : "bg-white/5 text-slate-300"
-                  }`}
+                  className={`h-11 w-11 rounded-xl flex items-center justify-center mb-5 ${f.highlight ? "bg-indigo-500 text-white" : "bg-white/5 text-slate-300"
+                    }`}
                 >
                   {f.icon}
                 </div>
@@ -210,7 +209,7 @@ export default function Home() {
           </p>
           <div className="flex items-center justify-center gap-4">
             <Link
-              to="/register"
+              to={user?"/datasets":"/register"}
               className="px-6 py-3 rounded-xl bg-[#0a0f1e] hover:bg-[#11182f] font-semibold text-white transition"
             >
               Get Started Now

@@ -3,6 +3,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import r2Client from "../../config/r2.js";
 import crypto from "crypto"
 import path from "path"
+import { detect } from "chardet";
+import { decode } from "iconv-lite";
 
 const BUCKET = process.env.R2_BUCKET_NAME
 
@@ -13,15 +15,28 @@ const uniqueid = crypto.randomUUID()
 const timestamp=Date.now()
 return `datasets/${userId}/${timestamp}-${uniqueid}-${safebase}${ext}`
 }
+function normalizeToUtf8(fileBuffer, mimetype) {
+  const isCSV = mimetype === "text/csv" || mimetype === "application/csv";
+  if (!isCSV) return fileBuffer;
 
+  const detected = detect(fileBuffer);
+  console.log(`[r2Storage] Detected encoding: ${detected}, mimetype: ${mimetype}`); // <-- add this
+
+  if (!detected || detected === "UTF-8") return fileBuffer;
+
+  console.log(`[r2Storage] Re-encoding CSV from ${detected} → UTF-8`);
+  const decoded = decode(fileBuffer, detected);
+  return Buffer.from(decoded, "utf8");
+}
 export async function uploadtoR2(fileBuffer, userId, originalName, mimetype) {
     const key = buildKey(userId, originalName)
+    const normalizedBuffer = normalizeToUtf8(fileBuffer,mimetype)
     try {
         await r2Client.send(
             new PutObjectCommand({
                 Bucket: BUCKET,
                 Key: key,
-                Body: fileBuffer,
+                Body: normalizedBuffer,
                 ContentType: mimetype,
                 Metadata: {
                     "original-name": originalName,
@@ -29,7 +44,7 @@ export async function uploadtoR2(fileBuffer, userId, originalName, mimetype) {
                 }
             })
         )
-        return { key, size: fileBuffer.length }
+        return { key, size: normalizedBuffer.length }
     } catch (err) {
         console.error("R2 upload failed FULL ERROR:", JSON.stringify(err, null, 2));  // <-- change this line
         console.error("R2 upload failed MESSAGE:", err.message);

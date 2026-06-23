@@ -12,7 +12,6 @@ import passport from "./config/passport.js"
 import datasetRoutes from "./modules/datasets/dataset.routes.js"
 
 
-
 const app = express()
 app.use(cookieParser())
 app.use(cors({ origin: process.env.CLIENT_URL ,
@@ -24,6 +23,7 @@ app.use(express.json())
 
 app.use("/api/auth",authRoutes)
 app.use("/api/datasets",datasetRoutes)
+
 app.listen(process.env.PORT ||3000,()=>{
     console.log("server running")
 })

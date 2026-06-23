@@ -37,7 +37,5 @@ return {
     min : Math.min(...numbers),
     max : Math.max(...numbers),
     mean : Number((sum/numbers.length).toFixed(2))
-
-
 }
 }

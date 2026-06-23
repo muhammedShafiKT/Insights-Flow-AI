@@ -4,126 +4,155 @@ import {
   uploadtoR2,
   getSignedDownloadUrl,
   deleteFromR2,
-  listUserFiles,
 } from "./r2Storage.service.js";
 import { Dataparser, ExtractMetadata } from "./datasetParser.service.js";
 import { extractColumns } from "../../services/profiling/extractColumns.js";
 import { generateProfile } from "../../services/profiling/generateProfile.js";
+import { asyncWrapper } from "../../middlewares/asyncWrapper.js";
+import { validateProfile } from "../../services/validation/profileValidator.js";
+import { generateCanditates } from "../../services/rules/generateCandidates.js";
+import { scoreCandidates } from "../../services/scoring/scoreCandidates.js";
+import { selectTopcandidates } from "../../services/scoring/selectTopcandidates.js";
+import { runAnalysis } from "../../services/analytics/runAnalysis.js";
 
 
-export const uploadDataset = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
-    }
-
-    const ext = path.extname(req.file.originalname).slice(1).toLowerCase();
-    console.log(req.file)
-    const rows = Dataparser(req.file.buffer, ext)
-    if (!rows.length) {
-  return res.status(400).json({
-    success: false,
-    message: "Dataset contains no rows"
-  });
-}
-
-const columns = extractColumns(rows)
-const profile = generateProfile(columns)
-console.log("profile generator works");
-    const metadata = ExtractMetadata(rows)
- 
-    
-// console.log(columns)
-//     console.log(metadata)
-
-    const { key, size } = await uploadtoR2(
-      req.file.buffer,
-      req.user.userId,        // req.user.userId not req.userId
-      req.file.originalname,
-      req.file.mimetype
-    );
-
-    const dataset = await Dataset.create({
-      userId: req.user.userId,
-      originalName: req.file.originalname,
-      r2Key: key,
-      fileType: ext,
-      sizeBytes: size,
-      rowCount: metadata.rowCount,
-      columnCount: metadata.columnCount,
-      columns: metadata.columns,
-      profile,
-      previewRows : rows.slice(0,10),
-      status: "uploaded",
+export const uploadDataset = asyncWrapper(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: "No file uploaded",
     });
-
-    res.status(201).json({ success: true, dataset });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message || "Upload failed" });
   }
-};
 
-export const getDownloadUrl = async (req, res) => {
-  try {
-    const dataset = await Dataset.findOne({ _id: req.params.id, userId: req.user.userId });
-    if (!dataset) {
-      return res.status(404).json({ success: false, message: "Dataset not found" });
-    }
+  const ext = path.extname(req.file.originalname)
+    .slice(1)
+    .toLowerCase();
 
-    const url = await getSignedDownloadUrl(dataset.r2Key, 900);
-    res.json({ success: true, url, expiresIn: 900 });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  const rows = Dataparser(req.file.buffer, ext);
+
+  if (!rows.length) {
+    return res.status(400).json({
+      success: false,
+      message: "Dataset contains no rows",
+    });
   }
-};
 
-export const deleteDataset = async (req, res) => {
-  try {
-    const dataset = await Dataset.findOne({ _id: req.params.id, userId: req.user.userId });
-    if (!dataset) {
-      return res.status(404).json({ success: false, message: "Dataset not found" });
-    }
+  const columns = extractColumns(rows);
+  const profile = generateProfile(columns);
+  const validation = validateProfile(profile)
+  // console.log("validation :",validation)
+  const candidates = generateCanditates(validation)
+  // console.log("candidates",candidates)
+  const scored = scoreCandidates(candidates)
+  console.log("scored",scored)
+  const top = selectTopcandidates(scored)
+  // console.log(top)
+ 
 
-    await deleteFromR2(dataset.r2Key);
-    await dataset.deleteOne();
 
-    res.json({ success: true, message: "Dataset deleted" });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  const metadata = ExtractMetadata(rows);
+
+  const { key, size } = await uploadtoR2(
+    req.file.buffer,
+    req.user.userId,
+    req.file.originalname,
+    req.file.mimetype
+  );
+
+  const signedUrl = await getSignedDownloadUrl(key)
+const analysis = await runAnalysis(scored,signedUrl)
+  console.log(analysis)
+  const dataset = await Dataset.create({
+    userId: req.user.userId,
+    originalName: req.file.originalname,
+    r2Key: key,
+    fileType: ext,
+    sizeBytes: size,
+    rowCount: metadata.rowCount,
+    columnCount: metadata.columnCount,
+    columns: metadata.columns,
+    profile,
+    previewRows: rows.slice(0, 10),
+    status: "uploaded",
+  });
+
+  res.status(201).json({
+    success: true,
+    dataset,
+  });
+});
+
+export const getDownloadUrl = asyncWrapper(async (req, res) => {
+  const dataset = await Dataset.findOne({
+    _id: req.params.id,
+    userId: req.user.userId,
+  });
+
+  if (!dataset) {
+    return res.status(404).json({
+      success: false,
+      message: "Dataset not found",
+    });
   }
-};
 
-export const listDatasets = async (req, res) => {
-  try {
-    const datasets = await Dataset.find({ userId: req.user.userId }).sort({ createdAt: -1 });
-    res.json({ success: true, datasets });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+  const url = await getSignedDownloadUrl(dataset.r2Key, 900);
 
-export const datasetPreview = async (req,res)=>{
-  try {
-    const dataset = await Dataset.findOne({
-      _id: req.params.id,
-      userId : req.user.userId
-    })
-    if(!dataset){
-      return res.status(404).json({
-        success :false,
-        message :"Dataset not found"
-      })
-    }
-       res.json({
-        success :true,
-        columns : dataset.columns,
-        rows :dataset.previewRows
-      })
-  } catch (error) {
-    res.status(500).json({
-        success: false,
-      message: error.message,
-    })
+  res.json({
+    success: true,
+    url,
+    expiresIn: 900,
+  });
+});
+
+export const deleteDataset = asyncWrapper(async (req, res) => {
+  const dataset = await Dataset.findOne({
+    _id: req.params.id,
+    userId: req.user.userId,
+  });
+
+  if (!dataset) {
+    return res.status(404).json({
+      success: false,
+      message: "Dataset not found",
+    });
   }
-}
+
+  await deleteFromR2(dataset.r2Key);
+  await dataset.deleteOne();
+
+  res.json({
+    success: true,
+    message: "Dataset deleted",
+  });
+});
+
+export const listDatasets = asyncWrapper(async (req, res) => {
+  const datasets = await Dataset.find({
+    userId: req.user.userId,
+  }).sort({ createdAt: -1 });
+
+  res.json({
+    success: true,
+    datasets,
+  });
+});
+
+export const datasetPreview = asyncWrapper(async (req, res) => {
+  const dataset = await Dataset.findOne({
+    _id: req.params.id,
+    userId: req.user.userId,
+  });
+
+  if (!dataset) {
+    return res.status(404).json({
+      success: false,
+      message: "Dataset not found",
+    });
+  }
+
+  res.json({
+    success: true,
+    columns: dataset.columns,
+    rows: dataset.previewRows,
+  });
+});

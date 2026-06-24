@@ -1,13 +1,16 @@
 import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import Login from '../pages/user/auth/Login'
-import Home from '../pages/user/components/Home'
-import Register from '../pages/user/auth/Register'
-import ForgotPassword from '../pages/user/auth/Forgotpassword'
-import VerifyOtp from '../pages/user/auth/VerifyOtp'
+import Login from '../pages/user/auth/Login.jsx'
+import Home from '../pages/user/components/Home.jsx'
+import Register from '../pages/user/auth/Register.jsx'
+import ForgotPassword from '../pages/user/auth/Forgotpassword.jsx'
+import VerifyOtp from '../pages/user/auth/VerifyOtp.jsx'
 
-import DatasetWorkspace from '../pages/user/datasets/Datasetworkspace'
-import AppLayout from '../pages/user/Layout/Applayout'
+import DatasetWorkspace from '../pages/user/datasets/Datasetworkspace.jsx'
+import AppLayout from '../pages/user/Layout/Applayout.jsx'
+import Dashboard from '../pages/user/dashboard/dashboard.jsx'
+import ChartSelectorPage from '../pages/user/dashboard/Chartselectorpage.jsx'
+import Chatpage from '../pages/user/datasets/Chatpage.jsx'
 
 function Approutes() {
   return (
@@ -25,6 +28,34 @@ function Approutes() {
         element={
           <AppLayout pageTitle="Workspace">
             <DatasetWorkspace />
+          </AppLayout>
+        }
+      />
+
+       <Route
+        path='/chat'
+        element={
+          <AppLayout pageTitle="Workspace">
+            <Chatpage />
+          </AppLayout>
+        }
+      />
+   
+       
+      <Route
+        path='/datasets/:id/dashboard'
+        element={
+          <AppLayout pageTitle="Dashboard">
+            <Dashboard/>
+          </AppLayout>
+        }
+      />
+
+            <Route
+        path='/datasets/:id/charts'
+        element={
+          <AppLayout pageTitle="Chart Selector">
+            <ChartSelectorPage/>
           </AppLayout>
         }
       />

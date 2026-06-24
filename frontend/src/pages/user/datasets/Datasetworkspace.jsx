@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import UploadZone from "./UploadZone";
 import RecentUploads from "./RecentUploads";
 import DataPreview from "./DataPreview";
@@ -11,6 +12,8 @@ function extensionToFileType(filename) {
 }
 
 export default function DatasetWorkspace() {
+  const navigate = useNavigate();
+
   const [datasets, setDatasets] = useState([]);
   const [uploadingFiles, setUploadingFiles] = useState([]);
   const [selectedDataset, setSelectedDataset] = useState(null);
@@ -177,6 +180,12 @@ export default function DatasetWorkspace() {
     }
   };
 
+  // ─── Open chart selector (pick candidates before generating) ──────────────
+  const handleGenerateDashboard = (id) => {
+    if (!id) return;
+    navigate(`/datasets/${id}/charts`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 px-8 py-10">
       <div className="mx-auto max-w-6xl space-y-8">
@@ -195,6 +204,7 @@ export default function DatasetWorkspace() {
             onDelete={handleDelete}
             onDeleteMany={handleDeleteMany}
             onDownload={handleDownload}
+            onGenerateDashboard={handleGenerateDashboard}
           />
           <DataPreview
             dataset={selectedDataset}

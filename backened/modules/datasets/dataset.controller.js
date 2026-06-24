@@ -14,6 +14,7 @@ import { generateCanditates } from "../../services/rules/generateCandidates.js";
 import { scoreCandidates } from "../../services/scoring/scoreCandidates.js";
 import { selectTopcandidates } from "../../services/scoring/selectTopcandidates.js";
 import { runAnalysis } from "../../services/analytics/runAnalysis.js";
+import { generateChart } from "../../services/generateDashboard/generateChart.js";
 
 
 export const uploadDataset = asyncWrapper(async (req, res) => {
@@ -42,14 +43,8 @@ export const uploadDataset = asyncWrapper(async (req, res) => {
   const validation = validateProfile(profile)
   // console.log("validation :",validation)
   const candidates = generateCanditates(validation)
-  // console.log("candidates",candidates)
-  const scored = scoreCandidates(candidates)
-  console.log("scored",scored)
-  const top = selectTopcandidates(scored)
-  // console.log(top)
+
  
-
-
   const metadata = ExtractMetadata(rows);
 
   const { key, size } = await uploadtoR2(
@@ -59,9 +54,7 @@ export const uploadDataset = asyncWrapper(async (req, res) => {
     req.file.mimetype
   );
 
-  const signedUrl = await getSignedDownloadUrl(key)
-const analysis = await runAnalysis(scored,signedUrl)
-  console.log(analysis)
+
   const dataset = await Dataset.create({
     userId: req.user.userId,
     originalName: req.file.originalname,
@@ -71,8 +64,9 @@ const analysis = await runAnalysis(scored,signedUrl)
     rowCount: metadata.rowCount,
     columnCount: metadata.columnCount,
     columns: metadata.columns,
-    profile,
+    candidates,
     previewRows: rows.slice(0, 10),
+    // dashboard,
     status: "uploaded",
   });
 

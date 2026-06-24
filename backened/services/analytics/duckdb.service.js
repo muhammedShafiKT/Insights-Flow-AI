@@ -5,3 +5,5 @@ const instance = await DuckDBInstance.create(":memory:")
 const connection = await instance.connect()
 return connection;
 }
+
+//connect

@@ -1,42 +1,84 @@
+import { useState } from "react";
 import Sidebar from "./Sidebar.jsx";
 
 export default function AppLayout({ pageTitle = "Workspace", user, children }) {
-  return (
-    <div className="flex min-h-screen bg-slate-950">
-      <Sidebar user={user} />
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-      <div className="flex-1 overflow-y-auto">
-        <header className="flex items-center justify-between border-b border-slate-800 px-8 py-5">
-          <div className="flex items-center gap-3">
-            <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-            </svg>
-            <h1 className="text-lg font-semibold text-slate-50">{pageTitle}</h1>
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 antialiased">
+      {/* Pass sidebarOpen to your Sidebar component so it can change its internal width,
+        hide text labels, or completely slide out of view.
+      */}
+      <Sidebar user={user} isCollapsed={!sidebarOpen} />
+
+      <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
+        {/* Header */}
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800/60 bg-slate-950/50 px-6 backdrop-blur-md">
+          <div className="flex items-center gap-4 min-w-0">
+            {/* Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800/80 bg-slate-900/30 text-slate-400 transition-all hover:bg-slate-800 hover:text-slate-200 active:scale-95"
+              aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              <svg 
+                className={`h-5 w-5 transition-transform duration-300 ease-out ${sidebarOpen ? "" : "rotate-180"}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth={1.8}
+              >
+                {/* Modern "fold-back" arrow menu indicator */}
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 9l-3 3m0 0l3 3m-3-3h7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            
+            <h1 className="truncate text-sm font-semibold tracking-tight text-slate-100">
+              {pageTitle}
+            </h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button type="button" className="text-slate-400 hover:text-slate-200" aria-label="Notifications">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
+          {/* Actions panel */}
+          <div className="flex items-center gap-3">
+            <button 
+              type="button" 
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-900 hover:text-slate-200" 
+              aria-label="Notifications"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
             </button>
-            <button type="button" className="text-slate-400 hover:text-slate-200" aria-label="Help">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
+            <button 
+              type="button" 
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-900 hover:text-slate-200" 
+              aria-label="Help"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45 1.005-1.45 1.827v.227M12 18.75h.007v.008H12v-.008z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.75a9.75 9.75 0 100-19.5 9.75 9.75 0 000 19.5z" />
               </svg>
             </button>
+
+            <div className="h-4 w-px bg-slate-800/80 mx-1" />
+
             {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+              <img src={user.avatarUrl} alt="" className="h-8 w-8 rounded-full border border-slate-800 object-cover ring-2 ring-indigo-500/10" />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-500 text-sm font-medium text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-semibold text-white shadow-sm shadow-indigo-500/20">
                 {user?.name?.[0]?.toUpperCase() || "?"}
               </div>
             )}
           </div>
         </header>
 
-        <main className="px-8 py-8">{children}</main>
+        {/* Scrollable App Body Container */}
+        <main className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

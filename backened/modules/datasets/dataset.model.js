@@ -17,6 +17,9 @@ const datasetSchema = new mongoose.Schema({
   type: mongoose.Schema.Types.Mixed,
   default: {}
 },
+dashboard : {type : Object , default :null},
+validation : {type : Object , default :null},
+candidates : {type :Array , default :[]},
     status: {
         type: String,
         enum: ["uploaded", "processing", "profiled", "ready", "failed"],

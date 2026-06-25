@@ -11,6 +11,7 @@ import authRoutes from "./modules/auth/auth.routes.js"
 import passport from "./config/passport.js"
 import datasetRoutes from "./modules/datasets/dataset.routes.js"
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js"
+import ConversationalRoutes from "./modules/conversation/conversation.routes.js"
 
 
 const app = express()
@@ -25,6 +26,8 @@ app.use(express.json())
 app.use("/api/auth",authRoutes)
 app.use("/api/datasets",datasetRoutes)
 app.use("/api/datasets",dashboardRoutes)
+app.use("/api/datasets",ConversationalRoutes)
 app.listen(process.env.PORT ||3000,()=>{
+    
     console.log("server running")
 })

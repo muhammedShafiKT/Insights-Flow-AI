@@ -10,7 +10,7 @@ import DatasetWorkspace from '../pages/user/datasets/Datasetworkspace.jsx'
 import AppLayout from '../pages/user/Layout/Applayout.jsx'
 import Dashboard from '../pages/user/dashboard/dashboard.jsx'
 import ChartSelectorPage from '../pages/user/dashboard/Chartselectorpage.jsx'
-import Chatpage from '../pages/user/datasets/Chatpage.jsx'
+import ChatPage from '../pages/user/datasets/Chatpage.jsx'
 
 function Approutes() {
   return (
@@ -33,14 +33,30 @@ function Approutes() {
       />
 
        <Route
-        path='/chat'
+        path='/chat/:id'
         element={
-          <AppLayout pageTitle="Workspace">
-            <Chatpage />
+          <AppLayout pageTitle="chat">
+            <ChatPage />
           </AppLayout>
         }
       />
-   
+
+             <Route
+        path='/chat'
+        element={
+          <AppLayout pageTitle="chat">
+            <ChatPage />
+          </AppLayout>
+        }
+      />
+             <Route
+        path='/dashboard'
+        element={
+          <AppLayout pageTitle="Dashboard">
+            <Dashboard />
+          </AppLayout>
+        }
+      />
        
       <Route
         path='/datasets/:id/dashboard'

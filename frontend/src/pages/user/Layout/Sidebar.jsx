@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import api from "../../../services/api";
 import { logout } from "../../../features/auth.slice";
 
@@ -10,6 +10,15 @@ const NAV_ITEMS = [
     icon: (
       <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6c0-1.1 3.58-2 8-2s8 .9 8 2-3.58 2-8 2-8-.9-8-2zm0 0v12c0 1.1 3.58 2 8 2s8-.9 8-2V6M4 12c0 1.1 3.58 2 8 2s8-.9 8-2" />
+      </svg>
+    ),
+  },
+   {
+    label: "Dashboard",
+    to: "/dashboard",
+    icon: (
+      <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
       </svg>
     ),
   },
@@ -51,6 +60,7 @@ export default function Sidebar({
   const user = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function handleLogout() {
     try {
@@ -90,30 +100,48 @@ export default function Sidebar({
       {/* Navigation Space */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
         <nav className="space-y-1">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              title={isCollapsed ? item.label : undefined}
-              className={({ isActive }) =>
-                `flex items-center rounded-xl font-medium transition-all duration-200 group relative ${
-                  isCollapsed ? "h-10 w-10 justify-center mx-auto" : "px-4 py-2.5 gap-3 text-sm"
-                } ${
-                  isActive
-                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/10"
-                    : "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200"
-                }`
-              }
-            >
-              {item.icon}
-              
-              {!isCollapsed && (
-                <span className="truncate transition-opacity duration-200 animate-fadeIn">
-                  {item.label}
-                </span>
-              )}
-            </NavLink>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            // Active matching is segment-based, not prefix-based, so a route
+            // like /datasets/:id/dashboard correctly highlights "Dashboard"
+            // instead of "Datasets". Each item is active only if its own
+            // segment is the LAST matching nav segment in the path — i.e.
+            // whichever of our routes appears furthest along the URL wins.
+            // This means /datasets/:id/dashboard → "dashboard" wins over
+            // "datasets" because it comes later in the path.
+            const pathSegments = location.pathname.split("/").filter(Boolean);
+            const itemSegment = item.to.replace(/^\//, "");
+
+            const lastMatchingSegment = [...pathSegments]
+              .reverse()
+              .find((seg) => NAV_ITEMS.some((n) => n.to.replace(/^\//, "") === seg));
+
+            const isActive = lastMatchingSegment === itemSegment;
+
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                title={isCollapsed ? item.label : undefined}
+                className={
+                  `flex items-center rounded-xl font-medium transition-all duration-200 group relative ${
+                    isCollapsed ? "h-10 w-10 justify-center mx-auto" : "px-4 py-2.5 gap-3 text-sm"
+                  } ${
+                    isActive
+                      ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/10"
+                      : "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200"
+                  }`
+                }
+              >
+                {item.icon}
+
+                {!isCollapsed && (
+                  <span className="truncate transition-opacity duration-200 animate-fadeIn">
+                    {item.label}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
       </div>
 

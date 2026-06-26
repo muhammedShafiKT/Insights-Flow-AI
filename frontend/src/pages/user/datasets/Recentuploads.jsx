@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const STATUS_LABEL = {
   uploading: "Uploading…",
@@ -111,6 +112,14 @@ function DeleteConfirm({ onConfirm, onCancel, isDeleting }) {
   );
 }
 
+function ChatIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+    </svg>
+  );
+}
+
 export default function RecentUploads({
   datasets = [],
   selectedId,
@@ -121,6 +130,7 @@ export default function RecentUploads({
   onDownload,
   onGenerateDashboard,
 }) {
+  const navigate = useNavigate()
   const isEmpty = datasets.length === 0 && uploadingFiles.length === 0;
 
   const [confirmingId, setConfirmingId] = useState(null);
@@ -279,9 +289,8 @@ export default function RecentUploads({
                 </div>
                 <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-slate-800/60">
                   <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      upload.status === "failed" ? "bg-rose-500" : "bg-indigo-500"
-                    }`}
+                    className={`h-full rounded-full transition-all duration-300 ${upload.status === "failed" ? "bg-rose-500" : "bg-indigo-500"
+                      }`}
                     style={{ width: `${upload.progress}%` }}
                   />
                 </div>
@@ -305,26 +314,23 @@ export default function RecentUploads({
             <li key={dataset._id} className="relative group">
               <div
                 onClick={() => !isSelecting && onSelect(dataset)}
-                className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 ${
-                  isSelecting ? "cursor-default" : "cursor-pointer"
-                } ${
-                  isChecked
+                className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 ${isSelecting ? "cursor-default" : "cursor-pointer"
+                  } ${isChecked
                     ? "border-rose-500/30 bg-rose-500/5 shadow-inner"
                     : isSelected
-                    ? "border-indigo-500/40 bg-indigo-500/10"
-                    : "border-slate-800/60 bg-slate-950/20 hover:border-slate-700 hover:bg-slate-800/20"
-                }`}
+                      ? "border-indigo-500/40 bg-indigo-500/10"
+                      : "border-slate-800/60 bg-slate-950/20 hover:border-slate-700 hover:bg-slate-800/20"
+                  }`}
               >
                 {/* Unified Selection/Icon Column */}
                 <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
                   <button
                     type="button"
                     onClick={(e) => toggleSelect(e, dataset._id)}
-                    className={`absolute inset-0 z-10 flex items-center justify-center rounded-lg border transition-all duration-150 ${
-                      isChecked
+                    className={`absolute inset-0 z-10 flex items-center justify-center rounded-lg border transition-all duration-150 ${isChecked
                         ? "border-rose-500 bg-rose-500 text-white"
                         : "border-slate-700 bg-slate-900 hover:border-slate-500"
-                    } ${isSelecting ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                      } ${isSelecting ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                     aria-label={isChecked ? "Deselect framework item" : "Select framework item"}
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -332,11 +338,9 @@ export default function RecentUploads({
                     </svg>
                   </button>
 
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg border text-slate-400 transition-opacity ${
-                    isSelecting ? "opacity-0" : "opacity-100 group-hover:opacity-0"
-                  } ${
-                    isSelected ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400" : "bg-slate-800/40 border-slate-800/60"
-                  }`}>
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg border text-slate-400 transition-opacity ${isSelecting ? "opacity-0" : "opacity-100 group-hover:opacity-0"
+                    } ${isSelected ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400" : "bg-slate-800/40 border-slate-800/60"
+                    }`}>
                     {fileIcon(dataset.fileType)}
                   </div>
                 </div>
@@ -377,6 +381,17 @@ export default function RecentUploads({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              navigate(`/chat/${dataset._id}`);
+                            }}
+                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-emerald-400"
+                            title="Open in chat"
+                          >
+                            <ChatIcon />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               onGenerateDashboard(dataset._id);
                             }}
                             className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-amber-400"
@@ -384,7 +399,6 @@ export default function RecentUploads({
                           >
                             <DashboardIcon />
                           </button>
-
                           <button
                             type="button"
                             onClick={(e) => {
@@ -396,7 +410,6 @@ export default function RecentUploads({
                           >
                             <DownloadIcon />
                           </button>
-
                           <button
                             type="button"
                             onClick={(e) => {

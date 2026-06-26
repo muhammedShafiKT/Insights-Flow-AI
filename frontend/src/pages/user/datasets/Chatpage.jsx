@@ -1,5 +1,8 @@
-import { useState, useRef, useEffect } from "react";
-import api from "../../../services/api";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Bot, Copy, SendHorizontal, User, Database, ChevronRight, FileText, Terminal, Sparkles } from "lucide-react";
+import { useChat } from "../../../hooks/Usechat.js";
+import api from "../../../services/api.js";
 
 const STATUS_LABEL = {
   uploading: "Uploading…",
@@ -10,298 +13,293 @@ const STATUS_LABEL = {
   failed: "Failed",
 };
 
-function fileIcon(fileType) {
-  if (fileType === "json") {
-    return (
-      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3v4.5a.75.75 0 00.75.75H19.5M9 12.75l-1.5 1.5 1.5 1.5M15 12.75l1.5 1.5-1.5 1.5M13 12l-2 4M6 3.75h7.5L19.5 9.75V19.5a.75.75 0 01-.75.75H6a.75.75 0 01-.75-.75V4.5A.75.75 0 016 3.75z" />
-      </svg>
-    );
-  }
-  if (fileType === "csv") {
-    return (
-      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.5h16.5v15H3.75v-15z M3.75 9.75h16.5M3.75 14.25h16.5M9.75 4.5v15M15 4.5v15" />
-      </svg>
-    );
-  }
+// ─── Typing Indicator ─────────────────────────────────────────────────────────
+
+function TypingIndicator() {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3v4.5a.75.75 0 00.75.75H19.5M6 3.75h7.5L19.5 9.75V19.5a.75.75 0 01-.75.75H6a.75.75 0 01-.75-.75V4.5A.75.75 0 016 3.75z" />
-    </svg>
+    <div className="flex w-full justify-start items-start gap-3.5 animate-fadeIn">
+      <Avatar />
+      <div className="rounded-2xl rounded-tl-none border border-slate-800/80 bg-slate-900/40 px-4 py-3 backdrop-blur-sm shadow-xl">
+        <div className="flex items-center gap-1.5 py-1 px-1">
+          {[0, 150, 300].map((delay) => (
+            <span
+              key={delay}
+              className="h-2 w-2 animate-bounce rounded-full bg-indigo-400/80"
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
-function formatSize(bytes) {
-  if (!bytes) return "—";
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  return `${(kb / 1024).toFixed(1)} MB`;
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+function Avatar({ isUser }) {
+  return (
+    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all ${
+      isUser
+        ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.15)]"
+        : "bg-slate-900 border-slate-800 text-slate-400"
+    }`}>
+      {isUser ? <User size={15} strokeWidth={2.5} /> : <Bot size={15} strokeWidth={2.5} />}
+    </div>
+  );
 }
 
-export default function Chatpage({ datasets = [] }) {
-  const [selectedDataset, setSelectedDataset] = useState(() => datasets[0] || null);
-  const [messages, setMessages] = useState([
-    {
-      id: "system-init",
-      role: "assistant",
-      text: "System core linked. Select an active dataset from the directory on the left to start asking questions.",
-    },
-  ]);
-  const [inputMessage, setInputMessage] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+// ─── Message Bubble ───────────────────────────────────────────────────────────
 
-  const messagesEndRef = useRef(null);
+function MessageBubble({ role, content }) {
+  const isUser = role === "user";
+  const [copied, setCopied] = useState(false);
 
-  // Scroll to view targets
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isProcessing]);
-
-  // Fixed asynchronous handle along with setting context
-  const handleSelectDataset = async (dataset) => {
-    try {
-      setSelectedDataset(dataset);
-      
-      // Optional: Fetch refined single dataset metrics from backend if needed
-      const result = await api.get("/datasets");
-      
-      // Flash structural updates into context notice
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `sys-${Date.now()}`,
-          role: "assistant",
-          text: `Context shifted target to dataset: ${dataset.originalName}. Directory mapped and analyzed successfully.`,
-        },
-      ]);
-    } catch (error) {
-      console.error("Failed shifting target dataset runtime scope:", error);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !selectedDataset || isProcessing) return;
-
-    const userText = inputMessage;
-    setInputMessage("");
-    setIsProcessing(true);
-
-    // Append client message
-    setMessages((prev) => [
-      ...prev,
-      { id: `user-${Date.now()}`, role: "user", text: userText },
-    ]);
-
-    try {
-      // Replace with your real API pathing parameters as needed
-      // const response = await api.post("/chat", { message: userText, datasetId: selectedDataset._id });
-      
-      // Mock delayed resolution interface wrapper
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          role: "assistant",
-          text: `Processed context request relative to columns: ${selectedDataset.columns?.join(", ")}. Systems running analytics operations cleanly.`,
-        },
-      ]);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+  const copy = () => {
+    navigator.clipboard.writeText(content)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+      .catch(console.error);
   };
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-[#030712] text-slate-100 selection:bg-indigo-500/30">
+    <div className={`flex w-full items-start gap-3.5 ${isUser ? "justify-end" : "justify-start"}`}>
+      {!isUser && <Avatar isUser={false} />}
+
+      <div className={`flex flex-col max-w-[75%] group ${isUser ? "items-end" : "items-start"}`}>
+        <div className={`rounded-2xl px-4 py-3 text-[13px] leading-6 tracking-wide shadow-xl backdrop-blur-sm border transition-all ${
+          isUser
+            ? "rounded-tr-none border-indigo-500/30 bg-indigo-600/10 text-slate-100 shadow-indigo-950/20"
+            : "rounded-tl-none border-slate-800/60 bg-slate-950/30 text-slate-300"
+        }`}>
+          <p className="whitespace-pre-wrap break-words font-sans">{content}</p>
+        </div>
+
+        {!isUser && (
+          <button
+            onClick={copy}
+            className="mt-1 flex items-center gap-1 rounded-lg px-2 py-0.5 font-mono text-[10px] tracking-wide text-slate-500 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-slate-900 hover:text-slate-300 transition-opacity"
+          >
+            <Copy size={10} /> {copied ? "Copied" : "Copy"}
+          </button>
+        )}
+      </div>
+
+      {isUser && <Avatar isUser={true} />}
+    </div>
+  );
+}
+
+// ─── Dataset Selector ─────────────────────────────────────────────────────────
+
+function DatasetSelector({ currentId, onSelect }) {
+  const [datasets, setDatasets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get("/datasets")
+      .then(({ data }) => setDatasets(data.datasets || []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-2 p-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-900/50 border border-slate-900/30" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!datasets.length) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 p-8 text-center h-48">
+        <Database size={20} className="text-slate-700" />
+        <p className="font-mono text-[10px] uppercase tracking-wider text-slate-600">No active structures</p>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col gap-2 overflow-y-auto p-4 flex-1">
+      {datasets.map((ds) => {
+        const isActive = ds._id === currentId;
+        return (
+          <li key={ds._id}>
+            <button
+              type="button"
+              onClick={() => onSelect(ds._id)}
+              className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 select-none ${
+                isActive
+                  ? "border-indigo-500/40 bg-indigo-500/10 text-white shadow-inner shadow-black/20"
+                  : "border-slate-900 bg-slate-950/40 text-slate-400 hover:border-slate-800 hover:bg-slate-900/20 hover:text-slate-200"
+              }`}
+            >
+              <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                isActive ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400" : "bg-slate-900 border-slate-800 text-slate-600"
+              }`}>
+                <FileText size={13} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`truncate text-xs font-semibold ${isActive ? "text-slate-200" : "text-slate-400"}`}>
+                  {ds.originalName}
+                </p>
+                <p className="mt-0.5 font-mono text-[9px] uppercase tracking-wider text-slate-500">
+                  {STATUS_LABEL[ds.status] || ds.status}
+                </p>
+              </div>
+              {isActive && <ChevronRight size={13} className="shrink-0 text-indigo-400 animate-pulse" />}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+const SUGGESTIONS = ["Total rows count", "Average revenue value", "Scan missing values", "Expose top 10 rows"];
+
+function EmptyState({ onSuggest, hasDataset }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center max-w-xl mx-auto text-center px-4 animate-fadeIn">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/50 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+        <Sparkles size={20} strokeWidth={1.5} />
+      </div>
+      <h2 className="text-base font-bold text-slate-200 tracking-tight">AI Data Analysis Terminal</h2>
+      <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
+        {hasDataset
+          ? "Dataset loaded. Ask anything about your data."
+          : "Select a dataset from the left panel to begin."}
+      </p>
+
+      {hasDataset && (
+        <div className="mt-8 grid grid-cols-2 gap-2.5 w-full">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onSuggest(s)}
+              className="rounded-xl border border-slate-900 bg-slate-950/40 p-3 font-mono text-[10px] uppercase font-bold tracking-wider text-slate-400 transition-all hover:border-slate-800 hover:bg-slate-900/30 hover:text-slate-200 text-center"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Chat Input ───────────────────────────────────────────────────────────────
+
+function ChatInput({ loading, onSend, disabled }) {
+  const [text, setText] = useState("");
+
+  const submit = () => {
+    if (!text.trim() || loading || disabled) return;
+    onSend(text.trim());
+    setText("");
+  };
+
+  return (
+    <footer className="border-t border-slate-900 bg-slate-950/40 backdrop-blur-md p-4 shrink-0">
+      <div className="mx-auto max-w-4xl">
+        <div className={`flex items-end gap-3 rounded-xl border bg-[#030712] p-3 transition-colors duration-200 ${
+          disabled ? "border-slate-950 opacity-40 cursor-not-allowed" : "border-slate-900 focus-within:border-indigo-500/40"
+        }`}>
+          <textarea
+            rows={1}
+            value={text}
+            disabled={loading || disabled}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+            }}
+            placeholder={disabled ? "Select a dataset to start chatting..." : "Ask anything about your data..."}
+            className="max-h-36 flex-1 resize-none bg-transparent py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600 leading-relaxed disabled:cursor-not-allowed"
+          />
+          <button
+            type="button"
+            onClick={submit}
+            disabled={loading || !text.trim() || disabled}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
+          >
+            <SendHorizontal size={14} />
+          </button>
+        </div>
+        <div className="mt-2.5 text-center font-mono text-[9px] uppercase tracking-widest text-slate-600 select-none">
+          Enter to send · Shift + Enter for new line
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ─── ChatPage ─────────────────────────────────────────────────────────────────
+
+export default function ChatPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const { messages, dataset, loading, sendMessage, bottomRef } = useChat(id);
+
+  return (
+    // NOTE: no h-screen/w-screen/absolute here — this fills the content
+    // slot your main layout (sidebar + content area) already provides.
+    // Parent route wrapper needs a definite height (e.g. h-screen on the
+    // layout root) for this h-full chain to resolve correctly.
+    <div className="relative flex h-full min-h-0 w-full overflow-hidden bg-[#030712] text-slate-100 selection:bg-indigo-500/30">
+
+      {/* Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-      {/* ── LEFT PANEL: DATASET DIRECTORY ─────────────────────────────────────── */}
-      <aside className="relative z-10 flex w-80 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
-        <div className="border-b border-slate-900 p-5">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]" />
-            <h2 className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Context Directory
+      {/* ── Dataset sidebar (inner, dataset-scoped — separate from your main app sidebar) ── */}
+      <aside className="relative z-10 flex w-72 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
+        <div className="border-b border-slate-900 p-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <Terminal size={13} className="text-slate-500" />
+            <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Context Pipeline
             </h2>
           </div>
-          <h3 className="text-sm font-black tracking-tight text-slate-200">
-            Select Dataset
-          </h3>
         </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {datasets.length === 0 ? (
-            <p className="py-8 text-center font-mono text-xs text-slate-600 uppercase tracking-widest">
-              No datasets uploaded
-            </p>
-          ) : (
-            datasets.map((dataset) => {
-              const isActive = selectedDataset?._id === dataset._id;
-
-              return (
-                <div
-                  key={dataset._id}
-                  onClick={() => handleSelectDataset(dataset)}
-                  className={`group relative flex flex-col rounded-xl border p-3.5 transition-all duration-200 select-none cursor-pointer ${
-                    isActive
-                      ? "border-indigo-500/40 bg-indigo-500/5 shadow-md shadow-black/30"
-                      : "border-slate-900 bg-slate-950/40 hover:border-slate-800 hover:bg-slate-900/20"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-colors ${
-                        isActive
-                          ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
-                          : "bg-slate-900 border-slate-800 text-slate-500 group-hover:text-slate-400"
-                      }`}
-                    >
-                      {fileIcon(dataset.fileType)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`truncate text-xs font-semibold ${
-                          isActive
-                            ? "text-slate-100"
-                            : "text-slate-300 transition-colors group-hover:text-slate-100"
-                        }`}
-                      >
-                        {dataset.originalName}
-                      </p>
-                      <div className="mt-1 flex items-center gap-1.5 font-mono text-[9px] text-slate-500 uppercase tracking-wider">
-                        <span>{formatSize(dataset.sizeBytes)}</span>
-                        <span>•</span>
-                        <span
-                          className={
-                            dataset.status === "ready" || dataset.status === "profiled"
-                              ? "text-emerald-500/80"
-                              : dataset.status === "failed"
-                              ? "text-rose-500/80"
-                              : "text-amber-500/80"
-                          }
-                        >
-                          {STATUS_LABEL[dataset.status] || dataset.status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+        <DatasetSelector currentId={id} onSelect={(dsId) => navigate(`/chat/${dsId}`)} />
       </aside>
 
-      {/* ── RIGHT PANEL: CHAT ──────────────────────────────────────────────────── */}
-      <main className="relative z-10 flex flex-1 flex-col bg-slate-950/10">
-        <header className="flex h-[69px] items-center justify-between border-b border-slate-900 px-6 backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <div className="font-mono text-xs uppercase tracking-widest text-slate-500">
-              Active dataset:
-            </div>
-            {selectedDataset ? (
-              <span className="rounded bg-indigo-500/5 border border-indigo-500/20 px-2.5 py-1 font-mono text-xs font-bold text-indigo-400">
-                {selectedDataset.originalName}
-              </span>
-            ) : (
-              <span className="font-mono text-xs text-rose-400 uppercase tracking-wider animate-pulse">
-                No dataset selected
-              </span>
-            )}
-          </div>
-          <div className="font-mono text-[10px] text-slate-600 uppercase tracking-widest">
-            InsightFlow AI · Secure
+      {/* ── Main ── */}
+      <div className="relative z-10 flex flex-1 flex-col overflow-hidden bg-slate-950/10 min-w-0">
+
+        {/* Header */}
+        <header className="flex h-[60px] items-center border-b border-slate-900 px-6 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">BOUND_STREAM:</span>
+            <p className="truncate font-mono text-xs font-bold text-indigo-400 bg-indigo-500/5 border border-indigo-500/10 px-2 py-0.5 rounded">
+              {dataset?.originalName ?? (id ? "LOCKING_CORE…" : "NULL_VECTOR")}
+            </p>
           </div>
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map((msg) => {
-            const isAI = msg.role === "assistant";
-            return (
-              <div
-                key={msg.id}
-                className={`flex w-full ${isAI ? "justify-start" : "justify-end"}`}
-              >
-                <div
-                  className={`max-w-2xl rounded-2xl border p-4 backdrop-blur-sm shadow-sm ${
-                    isAI
-                      ? "border-slate-900 bg-slate-950/40 text-slate-300"
-                      : "border-indigo-500/20 bg-indigo-500/5 text-slate-100"
-                  }`}
-                >
-                  <div className="font-mono text-[9px] uppercase tracking-wider text-slate-500 mb-1.5">
-                    {isAI ? "◇ InsightFlow AI" : "◆ You"}
-                  </div>
-                  <p className="text-xs leading-relaxed tracking-wide whitespace-pre-wrap">
-                    {msg.text}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-
-          {isProcessing && (
-            <div className="flex w-full justify-start">
-              <div className="rounded-2xl border border-slate-900 bg-slate-950/40 p-4 flex items-center gap-2">
-                <span className="flex gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:0ms]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:150ms]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:300ms]" />
-                </span>
-                <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider">
-                  Analyzing…
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="mx-auto w-full max-w-4xl flex flex-col min-h-full space-y-6">
+            {messages.length === 0 ? (
+              <EmptyState onSuggest={sendMessage} hasDataset={!!id} />
+            ) : (
+              messages.map((msg, i) => (
+                <MessageBubble key={i} role={msg.role} content={msg.content} />
+              ))
+            )}
+            {loading && <TypingIndicator />}
+            <div ref={bottomRef} className="h-2" />
+          </div>
         </div>
 
         {/* Input */}
-        <footer className="border-t border-slate-900 p-4 bg-slate-950/40 backdrop-blur-md">
-          <div className="mx-auto max-w-4xl relative">
-            <textarea
-              rows={1}
-              disabled={!selectedDataset || isProcessing}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                selectedDataset
-                  ? `Ask anything about "${selectedDataset.originalName}"… (Enter to send)`
-                  : "Select a dataset on the left to begin…"
-              }
-              className="w-full resize-none rounded-xl border border-slate-900 bg-[#030712] py-3.5 pl-4 pr-32 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 transition-colors leading-relaxed"
-            />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || !selectedDataset || isProcessing}
-                className="rounded-lg bg-indigo-600 px-4 py-2 font-mono text-[10px] uppercase font-bold tracking-widest text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-600/20 disabled:text-slate-500"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-          <p className="mt-2 text-center font-mono text-[9px] text-slate-700 uppercase tracking-widest">
-            Shift + Enter for new line
-          </p>
-        </footer>
-      </main>
+        <ChatInput loading={loading} onSend={sendMessage} disabled={!id} />
+
+      </div>
     </div>
   );
 }

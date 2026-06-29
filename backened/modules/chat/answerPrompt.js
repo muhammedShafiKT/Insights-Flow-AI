@@ -1,5 +1,5 @@
-export function answerPrompt({question,rows}){
-return `
+export function answerPrompt({ question, rows }) {
+  return `
 You are an expert data analyst.
 
 The SQL query has already been executed.

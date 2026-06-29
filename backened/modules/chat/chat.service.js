@@ -23,9 +23,17 @@ export const chatService = {
         })
 
         const sql = await generateAnswerfromllm(sqlprompt)
+        if (sql.trim() === "INSUFFICIENT_SCHEMA") {
+    return {
+        answer:
+            "I couldn't answer that because the uploaded dataset doesn't contain the required information.",
+        sql: null,
+        rows: []
+    };
+}
         // console.log("generated sql", sql)
 
-        const rows = await executeSQL(sql, signedUrl)
+        const rows = await executeSQL(sql, signedUrl,dataset.fileType, dataset.skipRows)
         // console.log("query result", rows)
 
         const prompt = answerPrompt({question,rows})

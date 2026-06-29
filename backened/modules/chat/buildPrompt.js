@@ -13,6 +13,11 @@ Rules:
 - Assume the table name is dataset.
 - Do not include markdown.
 - Do not explain the SQL.
+- Every function call must use parentheses immediately around its argument, with no space between the function name and the opening parenthesis.
+- Example of correct syntax:
+  SELECT MIN("column name") FROM dataset;
+- Example of INCORRECT syntax (missing parentheses):
+  SELECT MIN "column name" FROM dataset;
 - If the user's question cannot be answered using the available columns,
 do not generate SQL.
 Instead respond exactly:
@@ -32,3 +37,5 @@ Question:
 ${question}
 `;
 }
+
+

@@ -13,6 +13,7 @@ const datasetSchema = new mongoose.Schema({
         default :[]
     },
     previewRows : {type :[ mongoose.Schema.Types.Mixed] , default :[]},
+    skipRows : {type : Number , defaultv: 0},
     profile: {
   type: mongoose.Schema.Types.Mixed,
   default: {}

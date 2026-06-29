@@ -29,7 +29,7 @@ export const uploadDataset = asyncWrapper(async (req, res) => {
     .slice(1)
     .toLowerCase();
 
-  const rows = Dataparser(req.file.buffer, ext);
+  const {rows,headerRowIndex} = Dataparser(req.file.buffer, ext);
 
   if (!rows.length) {
     return res.status(400).json({
@@ -65,6 +65,7 @@ export const uploadDataset = asyncWrapper(async (req, res) => {
     columnCount: metadata.columnCount,
     columns: metadata.columns,
     candidates,
+    skipRows :headerRowIndex ,
     previewRows: rows.slice(0, 10),
     // dashboard,
     status: "uploaded",

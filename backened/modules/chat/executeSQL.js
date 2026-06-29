@@ -1,12 +1,21 @@
-import { createConnection } from "../../services/analytics/duckdb.service.js";
 
-export async function executeSQL(sql, signedUrl) {
+import { createConnection } from "../../services/analytics/duckdb.service.js"
+import { buildExtensionSetup, buildReadSource } from "../../services/analytics/sqlSource.helper.js" // adjust path
+
+export async function executeSQL(sql, signedUrl, fileType, skipRows = 0) {
     const { connection } = await createConnection()
     try {
+        const extensionSetup = buildExtensionSetup(fileType)
+        const readSource = buildReadSource(signedUrl, fileType, skipRows)
+
+        if (extensionSetup) {
+            await connection.run(extensionSetup)
+        }
+
         await connection.run(`
             CREATE OR REPLACE VIEW dataset AS
             SELECT *
-            FROM read_csv_auto('${signedUrl}');
+            FROM ${readSource};
         `)
         const reader = await connection.runAndReadAll(sql)
         const rows = reader.getRowObjects()
@@ -23,3 +32,22 @@ export async function executeSQL(sql, signedUrl) {
         throw error
     }
 }
+
+
+// export async function executeSQL(sql, signedUrl, fileType, skipRows) {
+//     const { connection } = await createConnection()
+//     try {
+//         const extensionSetup = buildExtensionSetup(fileType)
+//         const readSource = buildReadSource(signedUrl, fileType, skipRows)
+//         if (extensionSetup) await connection.run(extensionSetup)
+
+//         await connection.run(`
+//             CREATE OR REPLACE VIEW dataset AS
+//             SELECT * FROM ${readSource};
+//         `)
+//         // ...rest unchanged
+//     } catch (error) {
+//         console.error(error)
+//         throw error
+//     }
+// }

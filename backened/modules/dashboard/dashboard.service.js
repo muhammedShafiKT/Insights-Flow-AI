@@ -43,7 +43,7 @@ export const dashboardService = {
         createError("Dataset not found",404)
      }
      const signedUrl = await getSignedDownloadUrl(dataset.r2Key)
-     const analyses = await runAnalysis(selectedCandidates,signedUrl)
+     const analyses = await runAnalysis(selectedCandidates,signedUrl,dataset.fileType , dataset.skipRows)
      const charts = analyses.map(generateChart)
 
      dataset.dashboard = {

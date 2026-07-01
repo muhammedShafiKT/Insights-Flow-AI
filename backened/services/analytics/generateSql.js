@@ -5,8 +5,10 @@ function quoteIdent(name) {
     return `"${name.replace(/"/g, '""')}"`;
 }
 
-// Casts column to VARCHAR first, so REGEXP_EXTRACT never receives
-// BIGINT/INTEGER/DOUBLE/DATE — fixes DuckDB Binder Error on numeric columns.
+/**
+ * Casts a column to VARCHAR first, so REGEXP_EXTRACT never receives
+ * numerical/date types directly — fixes DuckDB Binder Errors on typed columns.
+ */
 function cleanNumeric(quotedCol) {
     return `TRY_CAST(
                 REPLACE(
@@ -21,14 +23,30 @@ export function generateSql(candidate) {
 
         case "comparison": {
             const category = quoteIdent(candidate.category);
-            const metric   = quoteIdent(candidate.metric);
+            
+            // Handle virtual row count metric fallback
+            if (candidate.metric === "row_count" || candidate.isDerivedMetric) {
+                return `
+                    SELECT ${category} AS category,
+                           COUNT(*) AS value
+                    FROM   dataset
+                    WHERE  ${category} IS NOT NULL
+                    GROUP  BY ${category}
+                    ORDER  BY value DESC
+                    LIMIT  20
+                `;
+            }
+
+            const metric = quoteIdent(candidate.metric);
             return `
                 SELECT ${category} AS category,
                        AVG(${cleanNumeric(metric)}) AS value
                 FROM   dataset
                 WHERE  ${cleanNumeric(metric)} IS NOT NULL
+                  AND  ${category} IS NOT NULL
                 GROUP  BY ${category}
                 ORDER  BY value DESC
+                LIMIT  20
             `;
         }
 
@@ -80,15 +98,54 @@ export function generateSql(candidate) {
         }
 
         case "trend": {
-            const date   = quoteIdent(candidate.date);
+            const date = quoteIdent(candidate.date);
+            
+            // Handle virtual row count metric fallback over a timeline
+            if (candidate.metric === "row_count" || candidate.isDerivedMetric) {
+                return `
+                    SELECT CAST(${date} AS VARCHAR) AS date,
+                           COUNT(*) AS value
+                    FROM   dataset
+                    WHERE  ${date} IS NOT NULL
+                    GROUP  BY ${date}
+                    ORDER  BY ${date} ASC
+                `;
+            }
+
             const metric = quoteIdent(candidate.metric);
             return `
-                SELECT ${date}                      AS date,
+                SELECT CAST(${date} AS VARCHAR) AS date,
                        AVG(${cleanNumeric(metric)}) AS value
                 FROM   dataset
                 WHERE  ${cleanNumeric(metric)} IS NOT NULL
+                  AND  ${date} IS NOT NULL
                 GROUP  BY ${date}
-                ORDER  BY ${date}
+                ORDER  BY ${date} ASC
+            `;
+        }
+
+        case "frequency": {
+            const column = quoteIdent(candidate.column);
+            return `
+                SELECT ${column} AS category,
+                       COUNT(*) AS value
+                FROM   dataset
+                WHERE  ${column} IS NOT NULL
+                GROUP  BY ${column}
+                ORDER  BY value DESC
+                LIMIT  20
+            `;
+        }
+
+        case "timeCount": {
+            const date = quoteIdent(candidate.date);
+            return `
+                SELECT CAST(${date} AS VARCHAR) AS date,
+                       COUNT(*) AS value
+                FROM   dataset
+                WHERE  ${date} IS NOT NULL
+                GROUP  BY ${date}
+                ORDER  BY ${date} ASC
             `;
         }
 

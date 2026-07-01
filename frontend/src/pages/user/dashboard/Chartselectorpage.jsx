@@ -10,6 +10,8 @@ const CHART_VARIANTS = {
   comparison: ["bar", "horizontalBar", "pie", "donut"],
   correlation: ["scatter", "bubble", "lineFit"],
   trend: ["line", "area", "bar"],
+  frequency: ["bar", "horizontalBar", "pie", "donut"],
+  timeCount: ["line", "area", "bar"],
 };
 
 const VARIANT_LABELS = {
@@ -77,6 +79,30 @@ const SECTIONS = [
     selBg: "bg-rose-500/5",
     selBorder: "border-rose-500/50",
   },
+  {
+    type: "frequency",
+    title: "Categorical Frequency",
+    description: "Count occurrences across non-identifier categorical dimensions",
+    icon: "📋",
+    accent: "text-cyan-400",
+    accentBg: "bg-cyan-500/5",
+    accentBorder: "border-cyan-500/20",
+    dot: "bg-cyan-400",
+    selBg: "bg-cyan-500/5",
+    selBorder: "border-cyan-500/50",
+  },
+    {
+    type: "timeCount",
+    title: "Temporal Volume",
+    description: "Track record volume across chronological bounds without a numeric metric",
+    icon: "🕒",
+    accent: "text-fuchsia-400",
+    accentBg: "bg-fuchsia-500/5",
+    accentBorder: "border-fuchsia-500/20",
+    dot: "bg-fuchsia-400",
+    selBg: "bg-fuchsia-500/5",
+    selBorder: "border-fuchsia-500/50",
+  },
 ];
 
 function humanize(str) {
@@ -88,6 +114,8 @@ function getLabel(c) {
   if (c.type === "comparison") return `${humanize(c.metric)} by ${humanize(c.category)}`;
   if (c.type === "correlation") return `${humanize(c.x)} vs ${humanize(c.y)}`;
   if (c.type === "trend") return `${humanize(c.metric)} over time`;
+    if (c.type === "frequency") return `Count by ${humanize(c.column)}`;
+  if (c.type === "timeCount") return `Records over time`;
   return "";
 }
 
@@ -97,6 +125,8 @@ function getSubLabel(c) {
   if (c.type === "comparison") return `${variantLabel} · ${humanize(c.category)}`;
   if (c.type === "correlation") return variantLabel;
   if (c.type === "trend") return variantLabel;
+  if (c.type === "frequency") return variantLabel;
+  if (c.type === "timeCount") return variantLabel;
   return "";
 }
 
@@ -352,6 +382,11 @@ export default function ChartSelectorPage() {
     setGenerateError(null);
     try {
       const payload = selectedCandidates.map(({ id: _cid, label, sub, ...rest }) => rest);
+//       const payload = selectedCandidates.map(({ id: _cid, label, sub, type, chartVariant, ...rest }) => ({
+//   ...rest,
+//   category: type,
+//   chartType: chartVariant,
+// }));
       await generateDashboard(id, payload);
       navigate(`/datasets/${id}/dashboard`);
     } catch (err) {

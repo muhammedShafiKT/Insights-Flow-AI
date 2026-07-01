@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 
-const ACCEPTED_EXTENSIONS = [".csv", ".xlsx", ".xls", ".json"];
+// const ACCEPTED_EXTENSIONS = [".csv", ".xlsx", ".xls", ".json"];
+const ACCEPTED_EXTENSIONS = [".csv"];
 
 function isAcceptedFile(file) {
   const name = file.name.toLowerCase();

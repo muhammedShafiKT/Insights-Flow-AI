@@ -104,28 +104,45 @@ function GenerateDashboardPanel({ id }) {
 // ─── Cross-chart aggregate engine ─────────────────────────────────────────────
 
 function computeExecutiveMetrics(charts = []) {
-  let globalTotalCount = 0;
-  let detectedPeaks = [];
-  let uniqueKeys = new Set();
+  const chartCount = charts.length;
 
+  // Count occurrences of each chart type for a readable breakdown
+  const typeCounts = {};
   charts.forEach((c) => {
-    if (c?.data && Array.isArray(c.data)) {
-      globalTotalCount += c.data.length;
-      const y = c.yField || "value";
-      const x = c.xField || "name";
-      c.data.forEach((d) => {
-        const val = Number(d[y]);
-        if (!isNaN(val)) detectedPeaks.push({ label: d[x] || "Unlabeled Vector", value: val });
-      });
-      if (c.chartType) uniqueKeys.add(c.chartType);
+    if (c?.chartType) {
+      typeCounts[c.chartType] = (typeCounts[c.chartType] || 0) + 1;
     }
   });
+  const typeBreakdown = Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, count]) => `${count} ${type}`);
 
-  const truePeak = detectedPeaks.length > 0
-    ? detectedPeaks.reduce((max, cur) => cur.value > max.value ? cur : max, detectedPeaks[0])
-    : null;
+  // Total rows visualized across all charts (raw plotted volume)
+  const totalDataPoints = charts.reduce(
+    (sum, c) => sum + (Array.isArray(c.data) ? c.data.length : 0),
+    0
+  );
 
-  return { totalVectors: globalTotalCount, distinctLayouts: uniqueKeys.size, peakMetric: truePeak };
+  // Highest value found, tagged with which chart it came from so units
+  // are never silently compared across incompatible chart types
+  let topInsight = null;
+  charts.forEach((c) => {
+    if (!Array.isArray(c.data)) return;
+    const y = c.yField || "value";
+    const x = c.xField || "name";
+    c.data.forEach((d) => {
+      const val = Number(d[y]);
+      if (!isNaN(val) && (!topInsight || val > topInsight.value)) {
+        topInsight = {
+          value: val,
+          label: d[x] ?? "Unlabeled",
+          chartTitle: c.title || "Untitled chart",
+        };
+      }
+    });
+  });
+
+  return { chartCount, typeBreakdown, totalDataPoints, topInsight };
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -245,30 +262,47 @@ export default function Dashboard() {
               </header>
 
               <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {/* Charts Generated */}
                 <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/5 blur-xl" />
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Integrated Canvas Profile</p>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Charts Generated</p>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="font-mono text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-300">
+                      {summaryMeta.chartCount}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-500">visualizations in this dashboard</span>
+                  </div>
                   <p className="text-xs leading-relaxed text-slate-400">
-                    Cross-evaluating <span className="font-semibold text-slate-200">{summaryMeta.distinctLayouts} structural chart topologies</span> running across a centralized pipeline array.
+                    {summaryMeta.typeBreakdown.length > 0
+                      ? summaryMeta.typeBreakdown.join(" · ")
+                      : "No chart types detected."}
                   </p>
                 </div>
+
+                {/* Data Points Plotted */}
                 <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-cyan-500/5 blur-xl" />
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Telemetry Coordinates</p>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Data Points Plotted</p>
                   <div className="flex items-baseline gap-2">
                     <span className="font-mono text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-300">
-                      {summaryMeta.totalVectors}
+                      {summaryMeta.totalDataPoints}
                     </span>
-                    <span className="text-[10px] font-medium text-slate-500">Total data indices tracked</span>
+                    <span className="text-[10px] font-medium text-slate-500">total values rendered across charts</span>
                   </div>
                 </div>
+
+                {/* Top Insight */}
                 <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/5 blur-xl" />
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Absolute Peak Threshold</p>
-                  {summaryMeta.peakMetric ? (
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Top Insight</p>
+                  {summaryMeta.topInsight ? (
                     <p className="text-xs leading-relaxed text-slate-400">
-                      Global maximum: <span className="font-semibold text-emerald-400">"{summaryMeta.peakMetric.label}"</span> at{" "}
-                      <span className="font-mono font-bold text-slate-200">{summaryMeta.peakMetric.value.toLocaleString()}</span>
+                      <span className="font-semibold text-emerald-400">"{summaryMeta.topInsight.label}"</span>{" "}
+                      leads at{" "}
+                      <span className="font-mono font-bold text-slate-200">
+                        {summaryMeta.topInsight.value.toLocaleString()}
+                      </span>{" "}
+                      in <span className="text-slate-300">{summaryMeta.topInsight.chartTitle}</span>
                     </p>
                   ) : (
                     <p className="text-xs text-slate-500">No scalable outliers in current stream batch.</p>

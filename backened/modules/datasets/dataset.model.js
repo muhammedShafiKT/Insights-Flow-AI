@@ -18,6 +18,7 @@ const datasetSchema = new mongoose.Schema({
   type: mongoose.Schema.Types.Mixed,
   default: {}
 },
+isIdentifier :{type : Boolean ,default :false},
 dashboard : {type : Object , default :null},
 validation : {type : Object , default :null},
 candidates : {type :Array , default :[]},

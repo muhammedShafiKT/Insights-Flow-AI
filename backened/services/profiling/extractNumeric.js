@@ -5,20 +5,13 @@ export function extractNumeric(value) {
 
   const str = String(value).trim();
 
-  // Explicit null markers
   if (/^(n\/a|na|none|nil|-|—)$/i.test(str)) {
     return NaN;
   }
 
-  // Unit token can be followed by extra descriptive words (e.g. "kWh battery",
-  // "kWh Higher End Model") — match the unit itself and swallow any trailing
-  // words after it, rather than requiring the unit to sit at the exact end.
+
   const unitPattern = /\s*(kwh|cc|hp|km\/h|kmh|mph|nm|sec|s|kg|lbs|rpm|kw|ps|battery|batt|electric|hybrid\s*batt?)\b.*$/i;
 
-  // Label-first pattern: "Battery (68-98 kWh)", "Battery (98 kWh)".
-  // Use the FIRST parenthetical that contains a digit, but only treat this
-  // as a true single label-first value if nothing meaningful (another
-  // "/" or "," separated variant) follows the matched parenthetical.
   const labelFirstMatch = str.match(/^[a-zA-Z\s]+\(([^)]*\d[^)]*)\)?/i);
   if (labelFirstMatch) {
     const remainder = str.slice(labelFirstMatch[0].length);
@@ -26,19 +19,10 @@ export function extractNumeric(value) {
       return extractNumeric(labelFirstMatch[1]);
     }
   }
-
-  // Strip everything after + (e.g. "+ Electric Motor", "+ batt", "+ Battery")
   let normalized = str.split(/\s*\+\s*/)[0].trim();
 
   const UNIT_WORD = "(?:kwh|cc|hp|km\\/h|kmh|mph|nm|sec|kg|lbs|rpm|kw|ps|battery|batt|electric|hybrid)";
 
-  // Split a string into engine/battery "variants" on "/" or on a comma —
-  // but only when that comma is genuinely separating two variants
-  // (e.g. "999 cc / 1498 cc", "HYBRID(2,494 cc),V6(3,456 cc)"), never when
-  // it's a thousands separator (digit,digit) or an unrelated label/value
-  // pair from a totally different column shape (e.g. "Model,2024").
-  // A comma only counts as a variant-separator if the text immediately
-  // following it (up to the next separator) contains a recognized unit
   // word or an opening paren — real measurement variants always do.
   function splitVariants(s) {
     const parts = [];
@@ -75,9 +59,6 @@ export function extractNumeric(value) {
     .map(seg => {
       seg = seg.trim();
 
-      // Per-segment label-wrapped number: "HYBRID(2,494 cc)", "V6(3,456 cc)" —
-      // the parenthetical here IS the value, so unwrap it instead of letting
-      // the generic "(...)" annotation-stripper below discard the number.
       const segLabelMatch = seg.match(/^[a-zA-Z\s]+\(([^)]*\d[^)]*)\)$/i);
       if (segLabelMatch) {
         seg = segLabelMatch[1];
@@ -93,7 +74,7 @@ export function extractNumeric(value) {
         .replace(/,/g, "")           // THEN remove commas (thousand separators)
         .trim();
 
-      // Now handle ranges — commas already gone so "1,500 - 2,000" → "1500 - 2000"
+     
       const rangeMatch = cleaned.match(/^(-?\d+(\.\d+)?)\s*-\s*(-?\d+(\.\d+)?)$/);
       if (rangeMatch) {
         const a = Number(rangeMatch[1]);

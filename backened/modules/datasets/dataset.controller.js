@@ -10,7 +10,7 @@ import { extractColumns } from "../../services/profiling/extractColumns.js";
 import { generateProfile } from "../../services/profiling/generateProfile.js";
 import { asyncWrapper } from "../../middlewares/asyncWrapper.js";
 import { validateProfile } from "../../services/validation/profileValidator.js";
-import { generateCanditates } from "../../services/rules/generateCandidates.js";
+import { generateCandidates } from "../../services/rules/generateCandidates.js";
 import { scoreCandidates } from "../../services/scoring/scoreCandidates.js";
 import { selectTopcandidates } from "../../services/scoring/selectTopcandidates.js";
 import { runAnalysis } from "../../services/analytics/runAnalysis.js";
@@ -39,10 +39,12 @@ export const uploadDataset = asyncWrapper(async (req, res) => {
   }
 
   const columns = extractColumns(rows);
+  // console.log(columns)
   const profile = generateProfile(columns);
+  // console.log(profile)
   const validation = validateProfile(profile)
   // console.log("validation :",validation)
-  const candidates = generateCanditates(validation)
+  const candidates = generateCandidates(validation,profile)
 
  
   const metadata = ExtractMetadata(rows);

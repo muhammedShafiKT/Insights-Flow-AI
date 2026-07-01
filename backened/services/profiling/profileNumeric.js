@@ -36,6 +36,7 @@ return {
     missingPercent : Number(((missingCount/values.length)*100).toFixed(2)),
     min : Math.min(...numbers),
     max : Math.max(...numbers),
-    mean : Number((sum/numbers.length).toFixed(2))
+    mean : Number((sum/numbers.length).toFixed(2)),
+    // isIdentifier
 }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getDashboard } from "../../../services/dashboard.api.js";
-import ChartRenderer from "./chartRenderer.jsx";
+import ChartRenderer from "./charts/chartRenderer.jsx";
 import api from "../../../services/api.js";
 import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw } from "lucide-react";
 

@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import { connection } from "./connection.js";
 
-export const datasetQueue = new Queue("dataset-processing",{
+export const dashboardQueue = new Queue("dashboard-generation",{
     connection
 })

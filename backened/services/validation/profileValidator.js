@@ -45,8 +45,6 @@ export function validateProfile(profile){
         validation.availableAnalysis.push("trend")
     }
 
-    // --- UNIVERSAL RECORD COUNT ANALYSIS ---
-    // These should ALWAYS be available if the data types exist, regardless of numeric metrics!
     if (validation.categoricalColumns.length >= 1) {
         validation.availableAnalysis.push("frequency")
     }

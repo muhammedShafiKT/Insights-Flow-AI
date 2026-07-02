@@ -5,10 +5,7 @@ function quoteIdent(name) {
     return `"${name.replace(/"/g, '""')}"`;
 }
 
-/**
- * Casts a column to VARCHAR first, so REGEXP_EXTRACT never receives
- * numerical/date types directly — fixes DuckDB Binder Errors on typed columns.
- */
+
 function cleanNumeric(quotedCol) {
     return `TRY_CAST(
                 REPLACE(
@@ -24,7 +21,7 @@ export function generateSql(candidate) {
         case "comparison": {
             const category = quoteIdent(candidate.category);
             
-            // Handle virtual row count metric fallback
+
             if (candidate.metric === "row_count" || candidate.isDerivedMetric) {
                 return `
                     SELECT ${category} AS category,
@@ -100,7 +97,6 @@ export function generateSql(candidate) {
         case "trend": {
             const date = quoteIdent(candidate.date);
             
-            // Handle virtual row count metric fallback over a timeline
             if (candidate.metric === "row_count" || candidate.isDerivedMetric) {
                 return `
                     SELECT CAST(${date} AS VARCHAR) AS date,

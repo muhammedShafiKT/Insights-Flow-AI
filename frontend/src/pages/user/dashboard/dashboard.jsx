@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getDashboard } from "../../../services/dashboard.api.js";
 import ChartRenderer from "./charts/chartRenderer.jsx";
 import api from "../../../services/api.js";
-import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw } from "lucide-react";
+import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw, Loader2 } from "lucide-react";
 
 // ─── Dataset Selector Sidebar ─────────────────────────────────────────────────
 
@@ -101,12 +101,42 @@ function GenerateDashboardPanel({ id }) {
   );
 }
 
+// ─── Job Progress Panel ────────────────────────────────────────────────────────
+
+function JobProgressPanel({ progress = 0, status }) {
+  const statusLabel = {
+    queued: "Queued…",
+    waiting: "Queued…",
+    active: "Processing…",
+  }[status] || "Working…";
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+      <div className="flex flex-col items-center gap-4 text-center w-full max-w-sm">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10">
+          <Loader2 size={28} className="text-indigo-400 animate-spin" />
+        </div>
+        <h2 className="text-lg font-bold text-slate-100">Generating dashboard…</h2>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          {statusLabel}
+        </p>
+        <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden">
+          <div
+            className="h-full bg-indigo-500 transition-all duration-500 ease-out"
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
+        <p className="font-mono text-xs text-slate-400">{Math.min(progress, 100)}%</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Cross-chart aggregate engine ─────────────────────────────────────────────
 
 function computeExecutiveMetrics(charts = []) {
   const chartCount = charts.length;
 
-  // Count occurrences of each chart type for a readable breakdown
   const typeCounts = {};
   charts.forEach((c) => {
     if (c?.chartType) {
@@ -117,14 +147,11 @@ function computeExecutiveMetrics(charts = []) {
     .sort((a, b) => b[1] - a[1])
     .map(([type, count]) => `${count} ${type}`);
 
-  // Total rows visualized across all charts (raw plotted volume)
   const totalDataPoints = charts.reduce(
     (sum, c) => sum + (Array.isArray(c.data) ? c.data.length : 0),
     0
   );
 
-  // Highest value found, tagged with which chart it came from so units
-  // are never silently compared across incompatible chart types
   let topInsight = null;
   charts.forEach((c) => {
     if (!Array.isArray(c.data)) return;
@@ -147,6 +174,8 @@ function computeExecutiveMetrics(charts = []) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
+const POLL_INTERVAL_MS = 1500;
+
 export default function Dashboard() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -154,6 +183,17 @@ export default function Dashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // job polling state: null = no active job, otherwise { status, progress }
+  const [job, setJob] = useState(null);
+  const pollRef = useRef(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
 
   const loadDashboard = () => {
     if (!id) return;
@@ -166,20 +206,60 @@ export default function Dashboard() {
       .finally(() => setIsLoading(false));
   };
 
-  useEffect(() => { loadDashboard(); }, [id]);
+  const checkJobOnce = async () => {
+    try {
+      const { data } = await api.get(`/datasets/${id}/dashboard/job`);
+
+      if (data.status === "completed") {
+        stopPolling();
+        setJob(null);
+        loadDashboard();
+        return;
+      }
+
+      if (data.status === "failed") {
+        stopPolling();
+        setJob(null);
+        setError(data.error || "Dashboard generation failed");
+        return;
+      }
+
+      // queued / waiting / active → keep polling
+      setJob({ status: data.status, progress: data.progress ?? 0 });
+    } catch (err) {
+      // 404 → no active job for this dataset, fall back to saved dashboard
+      stopPolling();
+      setJob(null);
+      loadDashboard();
+    }
+  };
+
+  useEffect(() => {
+    if (!id) return;
+
+    stopPolling();
+    setError(null);
+    setDashboard(null);
+    setJob(null);
+
+    // Always check job status first — this covers both the
+    // "just triggered generation" case AND a hard refresh mid-job.
+    checkJobOnce();
+    pollRef.current = setInterval(checkJobOnce, POLL_INTERVAL_MS);
+
+    return () => stopPolling();
+  }, [id]);
 
   const hasCharts = dashboard?.charts?.length > 0;
   const summaryMeta = hasCharts ? computeExecutiveMetrics(dashboard.charts) : null;
 
   return (
-    // NOTE: no h-screen/w-screen here — this component fills whatever
-    // container the parent layout (main sidebar + content area) gives it.
     <div className="relative flex h-full min-h-0 w-full overflow-hidden bg-[#030712] text-slate-100 selection:bg-indigo-500/30">
 
       {/* Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-      {/* ── Dataset sidebar (inner, dataset-scoped — separate from your main app sidebar) ── */}
+      {/* ── Dataset sidebar ── */}
       <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
         <div className="border-b border-slate-900 p-4 shrink-0">
           <div className="flex items-center gap-2">
@@ -203,8 +283,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Loading */}
-        {id && isLoading && (
+        {/* Active job in progress */}
+        {id && job && (
+          <JobProgressPanel progress={job.progress} status={job.status} />
+        )}
+
+        {/* Loading saved dashboard (no active job) */}
+        {id && !job && isLoading && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 font-mono text-xs text-slate-500">
             <div className="relative flex h-5 w-5 items-center justify-center">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-500 opacity-25" />
@@ -214,8 +299,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* API error */}
-        {id && !isLoading && error && (
+        {/* API / job error */}
+        {id && !job && !isLoading && error && (
           <div className="flex flex-1 items-center justify-center p-8">
             <div className="w-full max-w-md rounded-2xl border border-rose-950 bg-rose-950/10 p-5">
               <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-rose-400 mb-2">
@@ -227,12 +312,12 @@ export default function Dashboard() {
         )}
 
         {/* No dashboard yet → show generate panel */}
-        {id && !isLoading && !error && !hasCharts && (
-          <GenerateDashboardPanel id={id} onGenerated={loadDashboard} />
+        {id && !job && !isLoading && !error && !hasCharts && (
+          <GenerateDashboardPanel id={id} />
         )}
 
         {/* Dashboard charts */}
-        {id && !isLoading && !error && hasCharts && (
+        {id && !job && !isLoading && !error && hasCharts && (
           <div className="relative mx-auto w-full max-w-7xl px-6 py-10 md:px-8">
             <div className="relative">
               <header className="mb-10 flex flex-col gap-2 border-b border-slate-900 pb-8">

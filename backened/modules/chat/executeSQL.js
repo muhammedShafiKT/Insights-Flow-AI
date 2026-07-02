@@ -34,20 +34,3 @@ export async function executeSQL(sql, signedUrl, fileType, skipRows = 0) {
 }
 
 
-// export async function executeSQL(sql, signedUrl, fileType, skipRows) {
-//     const { connection } = await createConnection()
-//     try {
-//         const extensionSetup = buildExtensionSetup(fileType)
-//         const readSource = buildReadSource(signedUrl, fileType, skipRows)
-//         if (extensionSetup) await connection.run(extensionSetup)
-
-//         await connection.run(`
-//             CREATE OR REPLACE VIEW dataset AS
-//             SELECT * FROM ${readSource};
-//         `)
-//         // ...rest unchanged
-//     } catch (error) {
-//         console.error(error)
-//         throw error
-//     }
-// }

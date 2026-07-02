@@ -43,8 +43,6 @@ export function detectColumnType(values, columnName = "") {
 
   const nameSaysId = ID_NAME_PATTERN.test(columnName.trim());
   
-  // 2. FINE-TUNED IDENTIFIER LOGIC
-  // Raised threshold to 0.98 to account for edge cases where low-row datasets might naturally scale tightly
   const isIdentifier = uniqueRatio >= 0.98 && (nameSaysId || nonEmpty.length > 20);
 
   let type = "categorical";
@@ -55,6 +53,5 @@ export function detectColumnType(values, columnName = "") {
     type = "datetime";
   }
 
-  // 3. PASSED UNIQUE RATIO TO PROFILE GENERATOR
   return { type, isIdentifier, uniqueRatio };
 }

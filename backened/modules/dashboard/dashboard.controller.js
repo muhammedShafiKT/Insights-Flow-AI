@@ -13,3 +13,8 @@ export const generateDashboard = asyncWrapper(async (req,res)=>{
     const result = await dashboardService.generateDashboard(req,res);
     res.status(200).json(result)
 })
+
+export const getjobStatus = asyncWrapper(async (req,res)=>{
+    const result = await dashboardService.getJobStatus(req,res);
+    res.status(200).json(result)
+})

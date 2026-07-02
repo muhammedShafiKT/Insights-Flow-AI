@@ -1,13 +1,3 @@
-// export function generateDistributionChart(candidate,result){
-//     return {
-//         chartType : "distribution",
-//         title : `Average ${candidate.column} Distribution`,
-     
-//         data : result.map(([value])=>({value}))
-
-//     }
-
-// }
 const VARIANTS = ["histogram", "boxplot", "areaDistribution"];
 
 export function generateDistributionChart(candidate, result) {

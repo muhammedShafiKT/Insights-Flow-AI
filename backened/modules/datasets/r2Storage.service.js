@@ -113,3 +113,19 @@ export async function listUserFiles(userId) {
     )
     return result.Contents || []
 }
+
+export async function downloadFromR2(key) {
+  try {
+    const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+    const response = await r2Client.send(command);
+
+    const chunks = [];
+    for await (const chunk of response.Body) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  } catch (err) {
+    console.error("R2 download failed:", err);
+    throw new Error("Failed to download file from storage");
+  }
+}

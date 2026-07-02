@@ -13,7 +13,7 @@ import datasetRoutes from "./modules/datasets/dataset.routes.js"
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js"
 import ConversationalRoutes from "./modules/conversation/conversation.routes.js"
 import { redis, redisConnect } from "./config/redis.js"
-import { datasetQueue } from "./bullmq/queue.js"
+// import { datasetQueue } from "./bullmq/queue.js"
 
 await redisConnect()
 const app = express()
@@ -39,12 +39,12 @@ app.get("/redis-test",async(req,res)=>{
     })
 })
 
-app.get("/queue-test",async(req,res)=>{
-    const job = await datasetQueue.add("test-job",{
-        message : "hello bullmq"
-    })
-    res.json(job)
-})
+// app.get("/queue-test",async(req,res)=>{
+//     const job = await datasetQueue.add("test-job",{
+//         message : "hello bullmq"
+//     })
+//     res.json(job)
+// })
 app.listen(process.env.PORT ||3000,()=>{
     
     console.log("server running")

@@ -14,7 +14,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Never intercept auth routes
+  
     if (authRoutes.some(route => originalRequest.url.includes(route))) {
       return Promise.reject(error);
     }

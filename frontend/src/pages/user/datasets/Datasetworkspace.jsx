@@ -4,6 +4,7 @@ import UploadZone from "./UploadZone";
 import RecentUploads from "./RecentUploads";
 import DataPreview from "./DataPreview";
 import api from "../../../services/api.js"
+import { socket } from "../../../services/socket.js"; 
 
 function extensionToFileType(filename) {
   const ext = filename.split(".").pop().toLowerCase();
@@ -22,6 +23,8 @@ export default function DatasetWorkspace() {
   const [listError, setListError] = useState(null);
 
   const pollRef = useRef(null);
+  // NEW — maps jobId -> tempId, so the socket handler knows which upload card to update
+  const jobToTempIdRef = useRef({});
 
   // ─── Fetch list ───────────────────────────────────────────────────────────
   const fetchDatasets = useCallback(async () => {
@@ -38,7 +41,7 @@ export default function DatasetWorkspace() {
     fetchDatasets();
   }, [fetchDatasets]);
 
-  // ─── Polling for pending uploads ──────────────────────────────────────────
+  // ─── Polling for pending uploads (existing dataset-list-level polling) ────
   useEffect(() => {
     const hasPending = datasets.some(
       (d) => d.status === "uploaded" || d.status === "processing"
@@ -59,6 +62,47 @@ export default function DatasetWorkspace() {
       }
     };
   }, [datasets, fetchDatasets]);
+
+  // ─── NEW — listen for job progress over socket instead of polling ─────────
+  useEffect(() => {
+    const handleJobProgress = (data) => {
+        console.log("[job:progress] received:", data);
+      const { jobId, status, progress, resultId, error } = data;
+      const tempId = jobToTempIdRef.current[jobId];
+       console.log("[job:progress] mapped tempId:", tempId, "for jobId:", jobId);
+      if (!tempId) return; // not an upload we're tracking in this tab
+
+      if (status === "completed") {
+        setUploadingFiles((prev) => prev.filter((u) => u.tempId !== tempId));
+        delete jobToTempIdRef.current[jobId];
+        fetchDatasets(); // dataset now actually exists — safe to refresh
+        return;
+      }
+
+      if (status === "failed") {
+        setUploadingFiles((prev) =>
+          prev.map((u) => (u.tempId === tempId ? { ...u, status: "failed", error } : u))
+        );
+        delete jobToTempIdRef.current[jobId];
+        return;
+      }
+
+      // still active — update progress on the same card
+      setUploadingFiles((prev) =>
+        prev.map((u) =>
+          u.tempId === tempId
+            ? { ...u, status: "processing", progress: progress ?? u.progress }
+            : u
+        )
+      );
+    };
+
+    socket.on("job:progress", handleJobProgress);
+
+    return () => {
+      socket.off("job:progress", handleJobProgress);
+    };
+  }, [fetchDatasets]);
 
   // ─── Upload (XHR kept for progress tracking) ──────────────────────────────
   const handleFileSelected = (file) => {
@@ -87,20 +131,34 @@ export default function DatasetWorkspace() {
 
     xhr.onload = () => {
       const success = xhr.status >= 200 && xhr.status < 300;
+
+      if (!success) {
+        setUploadingFiles((prev) =>
+          prev.map((u) => (u.tempId === tempId ? { ...u, status: "failed" } : u))
+        );
+        return;
+      }
+
+      let response;
+      try {
+        response = JSON.parse(xhr.responseText);
+      } catch (err) {
+        setUploadingFiles((prev) =>
+          prev.map((u) => (u.tempId === tempId ? { ...u, status: "failed" } : u))
+        );
+        return;
+      }
+
+      const jobId = response.jobId;
+
       setUploadingFiles((prev) =>
         prev.map((u) =>
-          u.tempId === tempId
-            ? { ...u, progress: 100, status: success ? "uploaded" : "failed" }
-            : u
+          u.tempId === tempId ? { ...u, progress: 100, status: "processing", jobId } : u
         )
       );
 
-      if (success) {
-        fetchDatasets();
-        setTimeout(() => {
-          setUploadingFiles((prev) => prev.filter((u) => u.tempId !== tempId));
-        }, 1200);
-      }
+      // NEW — register this job so the socket handler can find the card to update
+      jobToTempIdRef.current[jobId] = tempId;
     };
 
     xhr.onerror = () => {

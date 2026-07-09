@@ -1,16 +1,20 @@
 // bullmq/dashboard.worker.js
 import { Worker } from "bullmq";
-import { connection } from "./connection.js";
-import Job from "./Job.model.js";
-import Dataset from "../modules/datasets/dataset.model.js";
-import { getSignedDownloadUrl } from "../modules/datasets/r2Storage.service.js";
-import { runAnalysis } from "../services/analytics/runAnalysis.js";
-import { generateChart } from "../services/generateDashboard/generateChart.js";
+import { connection } from "../connection.js";
+import Job from "../Job.model.js";
+import Dataset from "../../modules/datasets/dataset.model.js";
+import { getSignedDownloadUrl } from "../../modules/datasets/r2Storage.service.js";
+import { runAnalysis } from "../../services/analytics/runAnalysis.js";
+import { generateChart } from "../../services/generateDashboard/generateChart.js";
 import mongoose from "mongoose";
+import { createloggerforworkers } from "../../modules/utils/createloggerforworkers.js";
 
+const logger = createloggerforworkers("dashboard-worker")
 try {
   await mongoose.connect(process.env.MONGO_URL);
-  console.log("Worker connected to MongoDB");
+   logger()
+  console.log(" dashboard Worker connected to MongoDB");
+ 
 } catch (err) {
   console.error("Worker MongoDB connection error:", err);
 }

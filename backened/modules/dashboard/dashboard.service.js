@@ -4,7 +4,7 @@ import { runAnalysis } from "../../services/analytics/runAnalysis.js"
 import { generateChart } from "../../services/generateDashboard/generateChart.js"
 import { getSignedDownloadUrl } from "../datasets/r2Storage.service.js"
 import BullmqJobmodel from "../../bullmq/Job.model.js"
-import { dashboardQueue } from "../../bullmq/dashboardQueue.js"
+import { dashboardQueue } from "../../bullmq/dashboard/dashboardQueue.js"
 import Job from "../../bullmq/Job.model.js"
 const createError = (message,statusCode)=>{
     const error = new Error(message)

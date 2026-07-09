@@ -1,4 +1,6 @@
 import express from "express"
+import http from "http"
+import { initsocket } from "./config/socket.js"
 import mongoose from "mongoose"
 import cors from "cors"
 import dotenv from "dotenv"
@@ -45,7 +47,9 @@ app.get("/redis-test",async(req,res)=>{
 //     })
 //     res.json(job)
 // })
-app.listen(process.env.PORT ||3000,()=>{
+const httpServer = http.createServer(app)
+initsocket(httpServer)
+httpServer.listen(process.env.PORT ||3000,()=>{
     
     console.log("server running")
 })

@@ -23,6 +23,7 @@ export const chatService = {
         })
 
         const sql = await generateAnswerfromllm(sqlprompt)
+        console.log("Generated SQL:", sql);
         if (sql.trim() === "INSUFFICIENT_SCHEMA") {
     return {
         answer:

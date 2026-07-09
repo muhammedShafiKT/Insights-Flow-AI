@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     refreshToken :{type:String,default:null},
     isVerified:{type : Boolean,default :false},
     otpExpiry :{type:Date,default:null},
-    googleId :{type:String,default:null,unique:true,sparse:true},
+    googleId: { type: String, unique: true, sparse: true },
     authProvider :{type:String,enum:["local","google"],default:"local"}
 },{
     timestamps:true

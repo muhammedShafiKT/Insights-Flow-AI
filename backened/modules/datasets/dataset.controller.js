@@ -15,6 +15,8 @@ import { scoreCandidates } from "../../services/scoring/scoreCandidates.js";
 import { selectTopcandidates } from "../../services/scoring/selectTopcandidates.js";
 import { runAnalysis } from "../../services/analytics/runAnalysis.js";
 import { generateChart } from "../../services/generateDashboard/generateChart.js";
+import JobModel from "../../bullmq/Job.model.js";
+import { datasetuploadQueue } from "../../bullmq/dataset/datasetuploadQueue.js";
 
 
 export const uploadDataset = asyncWrapper(async (req, res) => {
@@ -29,25 +31,7 @@ export const uploadDataset = asyncWrapper(async (req, res) => {
     .slice(1)
     .toLowerCase();
 
-  const {rows,headerRowIndex} = Dataparser(req.file.buffer, ext);
-
-  if (!rows.length) {
-    return res.status(400).json({
-      success: false,
-      message: "Dataset contains no rows",
-    });
-  }
-
-  const columns = extractColumns(rows);
-  // console.log(columns)
-  const profile = generateProfile(columns);
-  // console.log(profile)
-  const validation = validateProfile(profile)
-  // console.log("validation :",validation)
-  const candidates = generateCandidates(validation,profile)
-
- 
-  const metadata = ExtractMetadata(rows);
+  
 
   const { key, size } = await uploadtoR2(
     req.file.buffer,
@@ -56,26 +40,29 @@ export const uploadDataset = asyncWrapper(async (req, res) => {
     req.file.mimetype
   );
 
+const job = await JobModel.create({
+  userId : req.user.userId,
+  type : "dataset-upload",
+  status : "pending"
+})
 
-  const dataset = await Dataset.create({
-    userId: req.user.userId,
+await datasetuploadQueue.add(
+  "dataset-uploader",{
+    jobId : job._id,
+    userId : req.user.userId.toString(),
     originalName: req.file.originalname,
     r2Key: key,
     fileType: ext,
     sizeBytes: size,
-    rowCount: metadata.rowCount,
-    columnCount: metadata.columnCount,
-    columns: metadata.columns,
-    candidates,
-    skipRows :headerRowIndex ,
-    previewRows: rows.slice(0, 10),
-    // dashboard,
-    status: "uploaded",
-  });
+},{
+  attempts :2,
+  backoff : {type : "exponential" ,delay : 3000}
+})
 
-  res.status(201).json({
+
+  res.status(202).json({
     success: true,
-    dataset,
+    jobId : job._id,
   });
 });
 
@@ -153,3 +140,11 @@ export const datasetPreview = asyncWrapper(async (req, res) => {
     rows: dataset.previewRows,
   });
 });
+
+export const getJobById = async (req, res) => {
+  const job = await JobModel.findOne({ _id: req.params.jobId, userId: req.user.userId });
+  if (!job) {
+    return res.status(404).json({ success: false, message: "Job not found" });
+  }
+  res.json(job);
+};

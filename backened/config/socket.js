@@ -1,4 +1,3 @@
-// src/config/socket.js
 import { Server } from "socket.io"
 import { createAdapter } from "@socket.io/redis-adapter"
 import { redis } from "./redis.js"
@@ -7,11 +6,17 @@ import { parseCookie } from "cookie"
 
 let io
 
-export const initsocket = (httpServer) => {
+export const initsocket = async (httpServer) => {
     let pubClient = redis.duplicate()
     let subClient = redis.duplicate()
 
-    console.log("[socket adapter] redis options:", pubClient.options?.host, pubClient.options?.port, pubClient.options?.db);
+    await pubClient.connect()
+    await subClient.connect()
+
+    console.log(
+        "[socket adapter] pub connected?", pubClient.isOpen,
+        "sub connected?", subClient.isOpen
+    )
 
     io = new Server(httpServer, {
         cors: {
@@ -30,8 +35,8 @@ export const initsocket = (httpServer) => {
             const token = parsed.accesstoken
             if (!token) return next(new Error("unauthorized: no accesstoken cookie"))
 
-            const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET)   // ← verify directly, don't call Express middleware
-            socket.userId = payload.userId ?? payload.id ?? payload._id       // ← match whatever field your JWT payload actually uses
+            const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
+            socket.userId = payload.userId ?? payload.id ?? payload._id
             console.log("SOCKET joined room:", `user:${socket.userId}`)
             next()
         } catch (error) {

@@ -8,6 +8,7 @@ import { runAnalysis } from "../../services/analytics/runAnalysis.js";
 import { generateChart } from "../../services/generateDashboard/generateChart.js";
 import mongoose from "mongoose";
 import { createloggerforworkers } from "../../modules/utils/createloggerforworkers.js";
+import { emitter } from "../emitter.js";
 
 const logger = createloggerforworkers("dashboard-worker")
 try {
@@ -22,16 +23,20 @@ try {
 const worker = new Worker(
   "dashboard-generation",
   async (job) => {
-    const { jobId, datasetId, selectedCandidates, r2Key, fileType, skipRows } = job.data;
+    const { jobId, datasetId, selectedCandidates, r2Key, fileType, skipRows ,userId } = job.data;
 
     await Job.findByIdAndUpdate(jobId, { status: "active", progress: 10 });
+          console.log("WORKER emitting to room:", `user:${userId}`, typeof userId)
+          emitter.to(`user:${userId}`).emit("dashboard:progress",{jobId,progress : 10 ,status : "active"})
 
     try {
       const signedUrl = await getSignedDownloadUrl(r2Key);
       await Job.findByIdAndUpdate(jobId, { progress: 30 });
+      emitter.to(`user:${userId}`).emit("dashboard:progress",{jobId,progress : 30 ,status : "active"})
 
       const analyses = await runAnalysis(selectedCandidates, signedUrl, fileType, skipRows);
       await Job.findByIdAndUpdate(jobId, { progress: 70 });
+      emitter.to(`user:${userId}`).emit("dashboard:progress",{jobId,progress : 70 ,status : "active"})
 
       const charts = analyses.map(generateChart);
 
@@ -44,10 +49,12 @@ const worker = new Worker(
       await dataset.save();
 
       await Job.findByIdAndUpdate(jobId, { status: "completed", progress: 100 });
+      emitter.to(`user:${userId}`).emit("dashboard:progress",{jobId,progress : 100 ,status : "completed",resultId : datasetId})
 
       return { datasetId };
     } catch (err) {
       await Job.findByIdAndUpdate(jobId, { status: "failed", error: err.message });
+      emitter.to(`user:${userId}`).emit("dashboard:progress",{jobId,status : "failed" , error :err.message})
       throw err;
     }
   },

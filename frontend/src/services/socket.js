@@ -6,6 +6,6 @@ export const socket = io(import.meta.env.VITE_SOCKET_URL, {
   autoConnect: true,
 })
 
-socket.on("connect", () => console.log("[socket] connected:", socket.id))
-socket.on("disconnect", (reason) => console.log("[socket] disconnected:", reason))
-socket.on("connect_error", (err) => console.log("[socket] connect_error:", err.message))
+// socket.on("connect", () => console.log("[socket] connected:", socket.id))
+// socket.on("disconnect", (reason) => console.log("[socket] disconnected:", reason))
+// socket.on("connect_error", (err) => console.log("[socket] connect_error:", err.message))

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getDashboard } from "../../../services/dashboard.api.js";
 import ChartRenderer from "./charts/chartRenderer.jsx";
 import api from "../../../services/api.js";
+import { socket } from "../../../services/socket.js";
 import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw, Loader2 } from "lucide-react";
 
 // ─── Dataset Selector Sidebar ─────────────────────────────────────────────────
@@ -101,7 +102,6 @@ function GenerateDashboardPanel({ id }) {
   );
 }
 
-// ─── Job Progress Panel ────────────────────────────────────────────────────────
 
 function JobProgressPanel({ progress = 0, status }) {
   const statusLabel = {
@@ -174,8 +174,6 @@ function computeExecutiveMetrics(charts = []) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL_MS = 1500;
-
 export default function Dashboard() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -184,16 +182,10 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // job polling state: null = no active job, otherwise { status, progress }
+  // job tracking state: null = no active job, otherwise { status, progress }
   const [job, setJob] = useState(null);
-  const pollRef = useRef(null);
-
-  const stopPolling = () => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  };
+  const jobRef = useRef(job);
+  jobRef.current = job;
 
   const loadDashboard = () => {
     if (!id) return;
@@ -206,29 +198,27 @@ export default function Dashboard() {
       .finally(() => setIsLoading(false));
   };
 
+  // One-shot REST check — covers "just triggered generation" and hard refresh mid-job.
   const checkJobOnce = async () => {
     try {
       const { data } = await api.get(`/datasets/${id}/dashboard/job`);
 
       if (data.status === "completed") {
-        stopPolling();
         setJob(null);
         loadDashboard();
         return;
       }
 
       if (data.status === "failed") {
-        stopPolling();
         setJob(null);
         setError(data.error || "Dashboard generation failed");
         return;
       }
 
-      // queued / waiting / active → keep polling
+      // queued / waiting / active → hold in job state, socket will drive updates from here
       setJob({ status: data.status, progress: data.progress ?? 0 });
     } catch (err) {
       // 404 → no active job for this dataset, fall back to saved dashboard
-      stopPolling();
       setJob(null);
       loadDashboard();
     }
@@ -237,17 +227,42 @@ export default function Dashboard() {
   useEffect(() => {
     if (!id) return;
 
-    stopPolling();
     setError(null);
     setDashboard(null);
     setJob(null);
 
-    // Always check job status first — this covers both the
-    // "just triggered generation" case AND a hard refresh mid-job.
     checkJobOnce();
-    pollRef.current = setInterval(checkJobOnce, POLL_INTERVAL_MS);
 
-    return () => stopPolling();
+    const handleProgress = (data) => {
+      //  console.log("[dashboard:progress] received:", data);
+    
+      if (data.datasetId && data.datasetId !== id) return;
+
+      if (data.status === "completed") {
+        setJob(null);
+        loadDashboard();
+        return;
+      }
+      if (data.status === "failed") {
+        setJob(null);
+        setError(data.error || "Dashboard generation failed");
+        return;
+      }
+      setJob({ status: data.status, progress: data.progress ?? 0 });
+    };
+
+    const handleConnect = () => {
+      if (jobRef.current) checkJobOnce();
+    };
+
+    socket.on("dashboard:progress", handleProgress);
+    socket.on("connect", handleConnect);
+
+    return () => {
+      socket.off("dashboard:progress", handleProgress);
+      socket.off("connect", handleConnect);
+    };
+
   }, [id]);
 
   const hasCharts = dashboard?.charts?.length > 0;

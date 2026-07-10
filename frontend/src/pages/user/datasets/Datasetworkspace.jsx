@@ -4,7 +4,14 @@ import UploadZone from "./UploadZone";
 import RecentUploads from "./RecentUploads";
 import DataPreview from "./DataPreview";
 import api from "../../../services/api.js"
-import { socket } from "../../../services/socket.js"; 
+import { socket } from "../../../services/socket.js";
+import {
+  getDatasets,
+  getJobById,
+  getDatasetPreview,
+  getDownloadUrl,
+  deleteDataset,
+} from "../../../services/dataset.api.js";
 
 function extensionToFileType(filename) {
   const ext = filename.split(".").pop().toLowerCase();
@@ -23,13 +30,12 @@ export default function DatasetWorkspace() {
   const [listError, setListError] = useState(null);
 
   const pollRef = useRef(null);
-  // NEW — maps jobId -> tempId, so the socket handler knows which upload card to update
   const jobToTempIdRef = useRef({});
 
   // ─── Fetch list ───────────────────────────────────────────────────────────
   const fetchDatasets = useCallback(async () => {
     try {
-      const { data } = await api.get("/datasets");
+      const data = await getDatasets();
       setDatasets(data.datasets || []);
       setListError(null);
     } catch (err) {
@@ -41,14 +47,13 @@ export default function DatasetWorkspace() {
     fetchDatasets();
   }, [fetchDatasets]);
 
-  // ─── Polling for pending uploads (existing dataset-list-level polling) ────
   useEffect(() => {
     const hasPending = datasets.some(
       (d) => d.status === "uploaded" || d.status === "processing"
     );
 
     if (hasPending && !pollRef.current) {
-      pollRef.current = setInterval(fetchDatasets, 10000);
+      pollRef.current = setInterval(fetchDatasets, 30000);
     }
     if (!hasPending && pollRef.current) {
       clearInterval(pollRef.current);
@@ -63,13 +68,27 @@ export default function DatasetWorkspace() {
     };
   }, [datasets, fetchDatasets]);
 
-  // ─── NEW — listen for job progress over socket instead of polling ─────────
+  // ─── Resync on socket (re)connect — catches anything missed while offline ─
+  useEffect(() => {
+    const handleConnect = () => {
+      // console.log("[socket] connected/reconnected — resyncing dataset list");
+      fetchDatasets();
+    };
+
+    socket.on("connect", handleConnect);
+
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, [fetchDatasets]);
+
+  // ─── Listen for job progress over socket ──────────────────────────────────
   useEffect(() => {
     const handleJobProgress = (data) => {
-        console.log("[job:progress] received:", data);
+      console.log("[job:progress] received:", data);
       const { jobId, status, progress, resultId, error } = data;
       const tempId = jobToTempIdRef.current[jobId];
-       console.log("[job:progress] mapped tempId:", tempId, "for jobId:", jobId);
+      console.log("[job:progress] mapped tempId:", tempId, "for jobId:", jobId);
       if (!tempId) return; // not an upload we're tracking in this tab
 
       if (status === "completed") {
@@ -129,7 +148,7 @@ export default function DatasetWorkspace() {
       );
     };
 
-    xhr.onload = () => {
+    xhr.onload = async () => {
       const success = xhr.status >= 200 && xhr.status < 300;
 
       if (!success) {
@@ -157,8 +176,37 @@ export default function DatasetWorkspace() {
         )
       );
 
-      // NEW — register this job so the socket handler can find the card to update
       jobToTempIdRef.current[jobId] = tempId;
+
+      try {
+        const jobStatus = await getJobById(jobId);
+
+        if (jobStatus.status === "completed") {
+          setUploadingFiles((prev) => prev.filter((u) => u.tempId !== tempId));
+          delete jobToTempIdRef.current[jobId];
+          fetchDatasets();
+        } else if (jobStatus.status === "failed") {
+          setUploadingFiles((prev) =>
+            prev.map((u) =>
+              u.tempId === tempId
+                ? { ...u, status: "failed", error: jobStatus.error }
+                : u
+            )
+          );
+          delete jobToTempIdRef.current[jobId];
+        } else if (jobStatus.progress != null) {
+          setUploadingFiles((prev) =>
+            prev.map((u) =>
+              u.tempId === tempId
+                ? { ...u, status: "processing", progress: jobStatus.progress }
+                : u
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Failed to sync job status:", err);
+        // Not fatal — socket updates or the fallback poll will still catch up.
+      }
     };
 
     xhr.onerror = () => {
@@ -177,9 +225,7 @@ export default function DatasetWorkspace() {
     setIsPreviewLoading(true);
 
     try {
-      const { data } = await api.get(`/datasets/${dataset._id}/preview`, {
-        headers: { "Cache-Control": "no-cache" },
-      });
+      const data = await getDatasetPreview(dataset._id);
       setPreviewRows({
         columns: data.columns || [],
         rows: data.rows || [],
@@ -195,7 +241,7 @@ export default function DatasetWorkspace() {
   // ─── Download ─────────────────────────────────────────────────────────────
   const handleDownload = async (id, originalName) => {
     try {
-      const { data } = await api.get(`/datasets/${id}/download-url`);
+      const data = await getDownloadUrl(id);
 
       const a = document.createElement("a");
       a.href = data.url;
@@ -211,7 +257,7 @@ export default function DatasetWorkspace() {
   // ─── Delete single ────────────────────────────────────────────────────────
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/datasets/${id}`);
+      await deleteDataset(id);
       setSelectedDataset((prev) => (prev?._id === id ? null : prev));
       setDatasets((prev) => prev.filter((d) => d._id !== id));
     } catch (err) {
@@ -221,9 +267,7 @@ export default function DatasetWorkspace() {
 
   // ─── Delete many ──────────────────────────────────────────────────────────
   const handleDeleteMany = async (ids) => {
-    const results = await Promise.allSettled(
-      ids.map((id) => api.delete(`/datasets/${id}`))
-    );
+    const results = await Promise.allSettled(ids.map((id) => deleteDataset(id)));
 
     const deletedIds = ids.filter((_, i) => results[i].status === "fulfilled");
 

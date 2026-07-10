@@ -48,7 +48,7 @@ app.get("/redis-test",async(req,res)=>{
 //     res.json(job)
 // })
 const httpServer = http.createServer(app)
-initsocket(httpServer)
+await initsocket(httpServer)
 httpServer.listen(process.env.PORT ||3000,()=>{
     
     console.log("server running")

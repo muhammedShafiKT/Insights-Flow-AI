@@ -1,8 +1,12 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
 import Sidebar from "./Sidebar.jsx";
+import UserMenu from "./UserMenu.jsx";
 
-export default function AppLayout({ pageTitle = "Workspace", user, children }) {
+export default function AppLayout({ pageTitle = "Workspace", children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isUserMenuOpen, setUserMenuOpen] = useState(false);
+  const user = useSelector((state) => state.auth.user);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 antialiased">
@@ -13,7 +17,7 @@ export default function AppLayout({ pageTitle = "Workspace", user, children }) {
 
       <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800/60 bg-slate-950/50 px-6 backdrop-blur-md">
+        <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-slate-800/60 bg-slate-950/50 px-6 backdrop-blur-md">
           <div className="flex items-center gap-4 min-w-0">
             {/* Toggle Button */}
             <button
@@ -63,13 +67,27 @@ export default function AppLayout({ pageTitle = "Workspace", user, children }) {
 
             <div className="h-4 w-px bg-slate-800/80 mx-1" />
 
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="" className="h-8 w-8 rounded-full border border-slate-800 object-cover ring-2 ring-indigo-500/10" />
-            ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-semibold text-white shadow-sm shadow-indigo-500/20">
-                {user?.name?.[0]?.toUpperCase() || "?"}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((prev) => !prev)}
+              title="Account"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold overflow-hidden shadow-inner transition-transform hover:scale-105 active:scale-95"
+            >
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                user?.name?.charAt(0)?.toUpperCase() || "U"
+              )}
+            </button>
+
+            <UserMenu
+              isOpen={isUserMenuOpen}
+              onClose={() => setUserMenuOpen(false)}
+            />
           </div>
         </header>
 

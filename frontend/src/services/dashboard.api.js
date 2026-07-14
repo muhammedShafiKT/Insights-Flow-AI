@@ -20,3 +20,12 @@ export const getJobStatus = async (datasetId) => {
   const { data } = await api.get(`/datasets/${datasetId}/dashboard/job`);
   return data; 
 };
+
+// Returns a raw PDF blob — must use responseType: "blob" or the browser
+// will try to parse the binary PDF bytes as JSON/text and corrupt it.
+export const exportDashboardPdf = async (datasetId) => {
+  const response = await api.get(`/datasets/${datasetId}/dashboard/export/pdf`, {
+    responseType: "blob",
+  });
+  return response.data;
+};

@@ -7,7 +7,9 @@ export function generateDistributionChart(candidate, result) {
 
     return {
         chartType: variant,
-        title: `Average ${candidate.column} Distribution`,
-        data: result.map(([value]) => ({ value }))
+        title: `${candidate.column} Distribution`,
+        xField: "value",
+        yField: "count",
+        data: result.map(([value, count]) => ({ value, count }))
     }
 }

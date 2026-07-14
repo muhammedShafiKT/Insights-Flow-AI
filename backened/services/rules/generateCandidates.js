@@ -1,25 +1,38 @@
-export function generateCandidates(validation, profile) {
-    const candidates = []
+const MAX_DISTRIBUTION = 10;
+const MAX_COMPARISON = 15;
+const MAX_TREND = 10;
+const MAX_CORRELATION = 10;
+const MAX_FREQUENCY = 10;
 
-    // 1. Helper function to safely look up keys regardless of minor casing/whitespace mismatches
+function qualityScore(colName, profile) {
+    const prof = profile[colName] || {};
+    let score = 100;
+    score -= (prof.missingPercent || 0);
+    if (prof.subType === "low-cardinality") score += 10;
+    if (prof.subType === "high-cardinality-text") score -= 30;
+    return score;
+}
+
+export function generateCandidates(validation, profile) {
+    const candidates = [];
+
     const getProfileForColumn = (colName) => {
         if (!profile) return null;
         if (profile[colName]) return profile[colName];
-        // Case-insensitive fallback lookup
-        const foundKey = Object.keys(profile).find(k => k.trim().toLowerCase() === colName.trim().toLowerCase());
+        const foundKey = Object.keys(profile).find(
+            (k) => k.trim().toLowerCase() === colName.trim().toLowerCase()
+        );
         return foundKey ? profile[foundKey] : null;
     };
 
-    // 2. Filter out explicit identifiers (like Index or Customer Id)
-    const numericColumns = (validation.numericColumns || []).filter(c => {
+    const numericColumns = (validation.numericColumns || []).filter((c) => {
         const prof = getProfileForColumn(c);
         return prof ? !prof.isIdentifier : true;
     });
-    
-    // 3. Filter out identifiers AND messy high-cardinality columns (Names, IDs)
-    const categoricalColumns = (validation.categoricalColumns || []).filter(c => {
+
+    const categoricalColumns = (validation.categoricalColumns || []).filter((c) => {
         const prof = getProfileForColumn(c);
-        if (!prof) return true; // If unknown, keep it safe
+        if (!prof) return true;
         if (prof.isIdentifier) return false;
         if (prof.subType === "high-cardinality-text") return false;
         return true;
@@ -27,64 +40,80 @@ export function generateCandidates(validation, profile) {
 
     const datetimeColumns = validation.datetimeColumns || [];
 
-    // 4. Fallback to row_count ONLY if no real metrics exist
     const effectiveMetrics = numericColumns.length > 0 ? numericColumns : ["row_count"];
 
     // --- DISTRIBUTION ---
     if (validation.availableAnalysis.includes("distribution") && numericColumns.length > 0) {
-        for (const column of numericColumns) {
-            candidates.push({ type: "distribution", column });
-        }
+        const items = numericColumns
+            .map((column) => ({ type: "distribution", column }))
+            .sort((a, b) => qualityScore(b.column, profile) - qualityScore(a.column, profile));
+        candidates.push(...items.slice(0, MAX_DISTRIBUTION));
     }
 
-    // --- COMPARISON (e.g., Metrics by Country/Region) ---
+    // --- COMPARISON ---
     if (validation.availableAnalysis.includes("comparison")) {
-        let compCount = 0;
+        const items = [];
         for (const category of categoricalColumns) {
             for (const metric of effectiveMetrics) {
-                if (compCount > 15) break;
-                candidates.push({ 
-                    type: "comparison", 
-                    metric, 
+                items.push({
+                    type: "comparison",
+                    metric,
                     category,
-                    isDerivedMetric: metric === "row_count"
+                    isDerivedMetric: metric === "row_count",
                 });
-                compCount++;
             }
         }
+        items.sort((a, b) => {
+            const scoreA = qualityScore(a.category, profile) + (a.isDerivedMetric ? 0 : qualityScore(a.metric, profile));
+            const scoreB = qualityScore(b.category, profile) + (b.isDerivedMetric ? 0 : qualityScore(b.metric, profile));
+            return scoreB - scoreA;
+        });
+        candidates.push(...items.slice(0, MAX_COMPARISON));
     }
 
     // --- TREND ---
     if (validation.availableAnalysis.includes("trend")) {
+        const items = [];
         for (const date of datetimeColumns) {
             for (const metric of effectiveMetrics) {
-                candidates.push({ 
-                    type: "trend", 
-                    metric, 
+                items.push({
+                    type: "trend",
+                    metric,
                     date,
-                    isDerivedMetric: metric === "row_count"
+                    isDerivedMetric: metric === "row_count",
                 });
             }
         }
+        items.sort((a, b) => {
+            const scoreA = qualityScore(a.date, profile) + (a.isDerivedMetric ? 0 : qualityScore(a.metric, profile));
+            const scoreB = qualityScore(b.date, profile) + (b.isDerivedMetric ? 0 : qualityScore(b.metric, profile));
+            return scoreB - scoreA;
+        });
+        candidates.push(...items.slice(0, MAX_TREND));
     }
 
     // --- CORRELATION ---
     if (validation.availableAnalysis.includes("correlation") && numericColumns.length > 1) {
-        let corrCount = 0;
+        const items = [];
         for (let i = 0; i < numericColumns.length; i++) {
             for (let j = i + 1; j < numericColumns.length; j++) {
-                if (corrCount > 10) break;
-                candidates.push({ type: "correlation", x: numericColumns[i], y: numericColumns[j] });
-                corrCount++;
+                items.push({ type: "correlation", x: numericColumns[i], y: numericColumns[j] });
             }
         }
+        items.sort((a, b) => {
+            const scoreA = qualityScore(a.x, profile) + qualityScore(a.y, profile);
+            const scoreB = qualityScore(b.x, profile) + qualityScore(b.y, profile);
+            return scoreB - scoreA;
+        });
+        candidates.push(...items.slice(0, MAX_CORRELATION));
     }
-    
+
     // --- FREQUENCY ---
-if (validation.availableAnalysis.includes("frequency")) {
-        for (const column of categoricalColumns) { //  FIXED: Now loops through the filtered array
-            candidates.push({ type: "frequency", column });
-        }
+    if (validation.availableAnalysis.includes("frequency")) {
+        const items = categoricalColumns
+            .map((column) => ({ type: "frequency", column }))
+            .sort((a, b) => qualityScore(b.column, profile) - qualityScore(a.column, profile));
+        candidates.push(...items.slice(0, MAX_FREQUENCY));
     }
 
     // --- TIME COUNT ---

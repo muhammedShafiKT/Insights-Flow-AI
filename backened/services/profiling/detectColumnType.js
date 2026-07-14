@@ -1,4 +1,3 @@
-
 import { extractNumeric } from "./extractNumeric.js";
 
 function isNumeric(value) {
@@ -12,9 +11,6 @@ function isDate(value) {
 
   const str = String(value).trim();
 
-  // 1. STRENGTHENED DATE REASONABILITY CHECK
-  // Ensures it follows typical separator layouts (YYYY-MM-DD, MM/DD/YYYY, etc.)
-  // and completely blocks standard phone numbers like 001-626-114-5844 or +1-539-402-0259
   const REASONABLE_DATE_PATTERN = /^\d{2,4}[/\-.]\d{1,2}[/\-.]\d{2,4}/;
   if (!REASONABLE_DATE_PATTERN.test(str)) {
     return false;
@@ -33,17 +29,24 @@ export function detectColumnType(values, columnName = "") {
   );
 
   if (nonEmpty.length === 0) {
-    return { type: "categorical", isIdentifier: false };
+    return { type: "categorical", isIdentifier: false, uniqueRatio: 0 };
   }
 
   const numericCount = nonEmpty.filter(isNumeric).length;
   const dateCount = nonEmpty.filter(isDate).length;
-  const uniqueCount = new Set(nonEmpty.map((value) => String(value).trim())).size;
+  const uniqueValues = new Set(nonEmpty.map((value) => String(value).trim()));
+  const uniqueCount = uniqueValues.size;
   const uniqueRatio = uniqueCount / nonEmpty.length;
 
   const nameSaysId = ID_NAME_PATTERN.test(columnName.trim());
-  
-  const isIdentifier = uniqueRatio >= 0.98 && (nameSaysId || nonEmpty.length > 20);
+
+  // Identifiers: near-unique AND (name says so, OR values are pure integer codes)
+  const looksLikeIntegerCode = nonEmpty.every(
+    (v) => /^-?\d+$/.test(String(v).trim())
+  );
+  const isIdentifier =
+    uniqueRatio >= 0.98 &&
+    (nameSaysId || (looksLikeIntegerCode && nonEmpty.length > 20));
 
   let type = "categorical";
 
@@ -53,5 +56,23 @@ export function detectColumnType(values, columnName = "") {
     type = "datetime";
   }
 
-  return { type, isIdentifier, uniqueRatio };
+  // Low-cardinality numeric override: flags, ratings, encoded categories
+  // (e.g. 0/1 binary, 1-5 Likert scale) should NOT be treated as continuous numeric.
+  const isLowCardinalityNumeric =
+    type === "numeric" &&
+    !isIdentifier &&
+    uniqueCount <= 10 &&
+    uniqueRatio < 0.05;
+
+  if (isLowCardinalityNumeric) {
+    type = "categorical";
+  }
+
+  return {
+    type,
+    isIdentifier,
+    uniqueRatio,
+    uniqueCount,
+    wasNumericLikeCategorical: isLowCardinalityNumeric, // useful downstream signal
+  };
 }

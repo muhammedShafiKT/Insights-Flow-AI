@@ -15,6 +15,7 @@ import datasetRoutes from "./modules/datasets/dataset.routes.js"
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js"
 import ConversationalRoutes from "./modules/conversation/conversation.routes.js"
 import { redis, redisConnect } from "./config/redis.js"
+import { closeBrowser } from "./config/puppeteer.js"
 // import { datasetQueue } from "./bullmq/queue.js"
 
 await redisConnect()
@@ -41,12 +42,14 @@ app.get("/redis-test",async(req,res)=>{
     })
 })
 
-// app.get("/queue-test",async(req,res)=>{
-//     const job = await datasetQueue.add("test-job",{
-//         message : "hello bullmq"
-//     })
-//     res.json(job)
-// })
+process.on("SIGTERM",async ()=>{
+    await closeBrowser();
+    process.exit(0)
+})
+process.on("SIGINT",async ()=>{
+    await closeBrowser();
+    process.exit(0)
+})
 const httpServer = http.createServer(app)
 await initsocket(httpServer)
 httpServer.listen(process.env.PORT ||3000,()=>{

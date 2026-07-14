@@ -5,22 +5,23 @@ function quoteIdent(name) {
     return `"${name.replace(/"/g, '""')}"`;
 }
 
-
 function cleanNumeric(quotedCol) {
     return `TRY_CAST(
                 REPLACE(
-                    REGEXP_EXTRACT(TRY_CAST(${quotedCol} AS VARCHAR), '[\\d,]+(?:\\.\\d+)?'),
+                    REGEXP_EXTRACT(TRY_CAST(${quotedCol} AS VARCHAR), '-?[\\d,]+(?:\\.\\d+)?'),
                     ',', ''
                 ) AS DOUBLE
             )`;
 }
 
+function cleanDate(quotedCol) {
+    return `TRY_CAST(${quotedCol} AS DATE)`;
+}
+
 export function generateSql(candidate) {
     switch (candidate.type) {
-
         case "comparison": {
             const category = quoteIdent(candidate.category);
-            
 
             if (candidate.metric === "row_count" || candidate.isDerivedMetric) {
                 return `
@@ -62,12 +63,14 @@ export function generateSql(candidate) {
                 ),
                 bucketed AS (
                     SELECT
-                        FLOOR(
-                            (p.val - s.min_val)
-                            / NULLIF((s.max_val - s.min_val), 0)
-                            * 20
+                        COALESCE(
+                            FLOOR(
+                                (p.val - s.min_val)
+                                / NULLIF((s.max_val - s.min_val), 0)
+                                * 20
+                            ),
+                            0
                         ) AS bucket,
-                        p.val,
                         s.min_val,
                         s.max_val
                     FROM parsed p, stats s
@@ -96,27 +99,28 @@ export function generateSql(candidate) {
 
         case "trend": {
             const date = quoteIdent(candidate.date);
-            
+            const parsedDate = cleanDate(date);
+
             if (candidate.metric === "row_count" || candidate.isDerivedMetric) {
                 return `
-                    SELECT CAST(${date} AS VARCHAR) AS date,
+                    SELECT CAST(${parsedDate} AS VARCHAR) AS date,
                            COUNT(*) AS value
                     FROM   dataset
-                    WHERE  ${date} IS NOT NULL
-                    GROUP  BY ${date}
-                    ORDER  BY ${date} ASC
+                    WHERE  ${parsedDate} IS NOT NULL
+                    GROUP  BY ${parsedDate}
+                    ORDER  BY ${parsedDate} ASC
                 `;
             }
 
             const metric = quoteIdent(candidate.metric);
             return `
-                SELECT CAST(${date} AS VARCHAR) AS date,
+                SELECT CAST(${parsedDate} AS VARCHAR) AS date,
                        AVG(${cleanNumeric(metric)}) AS value
                 FROM   dataset
                 WHERE  ${cleanNumeric(metric)} IS NOT NULL
-                  AND  ${date} IS NOT NULL
-                GROUP  BY ${date}
-                ORDER  BY ${date} ASC
+                  AND  ${parsedDate} IS NOT NULL
+                GROUP  BY ${parsedDate}
+                ORDER  BY ${parsedDate} ASC
             `;
         }
 
@@ -135,13 +139,14 @@ export function generateSql(candidate) {
 
         case "timeCount": {
             const date = quoteIdent(candidate.date);
+            const parsedDate = cleanDate(date);
             return `
-                SELECT CAST(${date} AS VARCHAR) AS date,
+                SELECT CAST(${parsedDate} AS VARCHAR) AS date,
                        COUNT(*) AS value
                 FROM   dataset
-                WHERE  ${date} IS NOT NULL
-                GROUP  BY ${date}
-                ORDER  BY ${date} ASC
+                WHERE  ${parsedDate} IS NOT NULL
+                GROUP  BY ${parsedDate}
+                ORDER  BY ${parsedDate} ASC
             `;
         }
 

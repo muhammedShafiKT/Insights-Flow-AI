@@ -27,6 +27,11 @@ export const getme = asyncWrapper(async (req, res) => {
   res.status(200).json(result);
 });
 
+export const updateName = asyncWrapper(async (req, res) => {
+    const result = await authService.updateName(req, res)
+    res.status(200).json(result)
+})
+
 export const logout = asyncWrapper(async (req, res) => {
   const result = await authService.logout(req, res);
   res.status(200).json(result);

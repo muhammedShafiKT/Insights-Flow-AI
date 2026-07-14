@@ -11,7 +11,7 @@ const features = [
       </svg>
     ),
     title: "Instant Uploads",
-    desc: "Drop CSV, XLSX, or JSON files directly into the workspace. Our engine auto-detects schemas and prepares data for immediate analysis.",
+    desc: "Drop CSV files directly into the workspace. Our engine auto-detects schemas and prepares data for immediate analysis.",
     link: "Learn more",
     highlight: false,
   },

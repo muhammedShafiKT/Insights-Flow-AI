@@ -1,28 +1,36 @@
-
 import { detectColumnType } from "./detectColumnType.js";
 import { profileCategorical } from "./profileCategorical.js";
 import { profileDate } from "./profileDate.js";
 import { profileNumeric } from "./profileNumeric.js";
 
 export function generateProfile(columns) {
-    const profile = {}
-    for (const [columnName, values] of Object.entries(columns)) {
-        // Capture uniqueRatio from type detection phase
-        const { type, isIdentifier, uniqueRatio } = detectColumnType(values, columnName)
-        
-        if (type == "numeric") {
-            profile[columnName] = { type, isIdentifier, ...profileNumeric(values) }
-        }
-        if (type == "categorical") {
-            // Pass uniqueRatio into the categorical profile parameters
-            profile[columnName] = { type, isIdentifier, ...profileCategorical(values, uniqueRatio) }
-        }
-        if (type == "datetime") {
-            profile[columnName] = { type, isIdentifier, ...profileDate(values) }
-        }
-        if (profile[columnName] && profile[columnName].count === 0) {
-            delete profile[columnName]
-        }
+  const profile = {};
+
+  for (const [columnName, values] of Object.entries(columns)) {
+    const { type, isIdentifier, uniqueRatio, uniqueCount, wasNumericLikeCategorical } =
+      detectColumnType(values, columnName);
+
+    let typeProfile;
+    if (type === "numeric") {
+      typeProfile = profileNumeric(values);
+    } else if (type === "categorical") {
+      typeProfile = profileCategorical(values, uniqueRatio);
+    } else if (type === "datetime") {
+      typeProfile = profileDate(values);
     }
-    return profile
+
+    if (!typeProfile || typeProfile.count === 0) {
+      continue; // skip empty columns entirely, don't add them to profile
+    }
+
+    profile[columnName] = {
+      type,
+      isIdentifier,
+      uniqueCount,
+      wasNumericLikeCategorical,
+      ...typeProfile,
+    };
+  }
+
+  return profile;
 }

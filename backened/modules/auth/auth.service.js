@@ -185,6 +185,32 @@ const authService = {
         return { user }
     },
 
+    updateName: async (req, res) => {
+        const { name } = req.body
+
+        if (!name || !name.trim()) {
+            throw createError("Name is required", 400)
+        }
+
+        const user = await User.findById(req.user.userId)
+        if (!user) {
+            throw createError("User not found", 404)
+        }
+
+        user.name = name.trim()
+        await user.save()
+
+        return {
+            message: "Name updated successfully",
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+            }
+        }
+    },
+
     logout: async (req, res) => {
         const refreshtoken = req.cookies.refreshtoken
         if (!refreshtoken) {

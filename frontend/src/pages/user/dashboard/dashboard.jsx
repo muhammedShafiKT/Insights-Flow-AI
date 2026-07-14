@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getDashboard } from "../../../services/dashboard.api.js";
+import { getDashboard, exportDashboardPdf } from "../../../services/dashboard.api.js";
 import ChartRenderer from "./charts/chartRenderer.jsx";
 import api from "../../../services/api.js";
 import { socket } from "../../../services/socket.js";
-import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw, Loader2 } from "lucide-react";
+import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw, Loader2, Download } from "lucide-react";
 
 // ─── Dataset Selector Sidebar ─────────────────────────────────────────────────
 
@@ -102,7 +102,6 @@ function GenerateDashboardPanel({ id }) {
   );
 }
 
-
 function JobProgressPanel({ progress = 0, status }) {
   const statusLabel = {
     queued: "Queued…",
@@ -174,15 +173,18 @@ function computeExecutiveMetrics(charts = []) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export default function Dashboard() {
+// printMode strips the dataset sidebar and export button — used by the
+// Puppeteer-only /print/datasets/:id/dashboard route so exported PDFs
+// contain just the dashboard content, nothing else.
+export default function Dashboard({ printMode = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // job tracking state: null = no active job, otherwise { status, progress }
   const [job, setJob] = useState(null);
   const jobRef = useRef(job);
   jobRef.current = job;
@@ -198,7 +200,6 @@ export default function Dashboard() {
       .finally(() => setIsLoading(false));
   };
 
-  // One-shot REST check — covers "just triggered generation" and hard refresh mid-job.
   const checkJobOnce = async () => {
     try {
       const { data } = await api.get(`/datasets/${id}/dashboard/job`);
@@ -215,10 +216,8 @@ export default function Dashboard() {
         return;
       }
 
-      // queued / waiting / active → hold in job state, socket will drive updates from here
       setJob({ status: data.status, progress: data.progress ?? 0 });
     } catch (err) {
-      // 404 → no active job for this dataset, fall back to saved dashboard
       setJob(null);
       loadDashboard();
     }
@@ -234,8 +233,6 @@ export default function Dashboard() {
     checkJobOnce();
 
     const handleProgress = (data) => {
-      //  console.log("[dashboard:progress] received:", data);
-    
       if (data.datasetId && data.datasetId !== id) return;
 
       if (data.status === "completed") {
@@ -262,8 +259,28 @@ export default function Dashboard() {
       socket.off("dashboard:progress", handleProgress);
       socket.off("connect", handleConnect);
     };
-
   }, [id]);
+
+  const handleExport = async () => {
+    if (!id || isExporting) return;
+    setIsExporting(true);
+    try {
+      const blob = await exportDashboardPdf(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dashboard-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+      setError("Failed to export dashboard as PDF");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const hasCharts = dashboard?.charts?.length > 0;
   const summaryMeta = hasCharts ? computeExecutiveMetrics(dashboard.charts) : null;
@@ -274,36 +291,35 @@ export default function Dashboard() {
       {/* Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-      {/* ── Dataset sidebar ── */}
-      <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
-        <div className="border-b border-slate-900 p-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <Database size={13} className="text-slate-500" />
-            <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">Datasets</h2>
+      {/* ── Dataset sidebar — hidden in print mode ── */}
+      {!printMode && (
+        <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
+          <div className="border-b border-slate-900 p-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <Database size={13} className="text-slate-500" />
+              <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">Datasets</h2>
+            </div>
           </div>
-        </div>
-        <DatasetSelector
-          currentId={id}
-          onSelect={(dsId) => navigate(`/datasets/${dsId}/dashboard`)}
-        />
-      </aside>
+          <DatasetSelector
+            currentId={id}
+            onSelect={(dsId) => navigate(`/datasets/${dsId}/dashboard`)}
+          />
+        </aside>
+      )}
 
       {/* ── Main ── */}
       <div className="relative z-10 flex flex-1 flex-col overflow-y-auto min-w-0">
 
-        {/* No dataset selected */}
         {!id && (
           <div className="flex flex-1 items-center justify-center font-mono text-xs text-slate-600">
             SELECT A DATASET TO VIEW ITS DASHBOARD
           </div>
         )}
 
-        {/* Active job in progress */}
         {id && job && (
           <JobProgressPanel progress={job.progress} status={job.status} />
         )}
 
-        {/* Loading saved dashboard (no active job) */}
         {id && !job && isLoading && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 font-mono text-xs text-slate-500">
             <div className="relative flex h-5 w-5 items-center justify-center">
@@ -314,7 +330,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* API / job error */}
         {id && !job && !isLoading && error && (
           <div className="flex flex-1 items-center justify-center p-8">
             <div className="w-full max-w-md rounded-2xl border border-rose-950 bg-rose-950/10 p-5">
@@ -326,14 +341,18 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* No dashboard yet → show generate panel */}
-        {id && !job && !isLoading && !error && !hasCharts && (
+        {id && !job && !isLoading && !error && !hasCharts && !printMode && (
           <GenerateDashboardPanel id={id} />
         )}
 
-        {/* Dashboard charts */}
+        {/* Dashboard charts — data-dashboard-ready is the marker Puppeteer
+            waits on before taking the PDF snapshot. Only flips true once
+            charts are actually in the DOM. */}
         {id && !job && !isLoading && !error && hasCharts && (
-          <div className="relative mx-auto w-full max-w-7xl px-6 py-10 md:px-8">
+          <div
+            data-dashboard-ready="true"
+            className="relative mx-auto w-full max-w-7xl px-6 py-10 md:px-8"
+          >
             <div className="relative">
               <header className="mb-10 flex flex-col gap-2 border-b border-slate-900 pb-8">
                 <div className="flex items-center gap-3">
@@ -347,14 +366,35 @@ export default function Dashboard() {
                   <h1 className="text-2xl font-black tracking-tight text-slate-100 sm:text-3xl">
                     {dashboard.title || "Operational Intelligence Canvas"}
                   </h1>
-                  <button
-                    onClick={() => navigate(`/datasets/${id}/charts`)}
-                    title="Regenerate dashboard"
-                    className="mt-1 flex shrink-0 items-center gap-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-400 transition hover:bg-indigo-500/20"
-                  >
-                    <RefreshCw size={12} />
-                    Regenerate
-                  </button>
+
+                  {/* Regenerate + Export — hidden in print mode, no point
+                      showing interactive controls inside a PDF */}
+                  {!printMode && (
+                    <div className="mt-1 flex shrink-0 items-center gap-2">
+                      <button
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        title="Export as PDF"
+                        className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isExporting ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <Download size={12} />
+                        )}
+                        {isExporting ? "Exporting…" : "Export PDF"}
+                      </button>
+
+                      <button
+                        onClick={() => navigate(`/datasets/${id}/charts`)}
+                        title="Regenerate dashboard"
+                        className="flex items-center gap-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-400 transition hover:bg-indigo-500/20"
+                      >
+                        <RefreshCw size={12} />
+                        Regenerate
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-slate-400">
                   Interactive high-fidelity analysis matrix synthesizing multi-source target datasets.
@@ -362,7 +402,6 @@ export default function Dashboard() {
               </header>
 
               <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {/* Charts Generated */}
                 <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/5 blur-xl" />
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Charts Generated</p>
@@ -379,7 +418,6 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                {/* Data Points Plotted */}
                 <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-cyan-500/5 blur-xl" />
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Data Points Plotted</p>
@@ -391,7 +429,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Top Insight */}
                 <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/5 blur-xl" />
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Top Insight</p>
@@ -412,7 +449,7 @@ export default function Dashboard() {
 
               <main className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {dashboard.charts.map((chart, index) => (
-                  <div key={index} className="transition-all duration-300">
+                  <div key={index} data-chart-card className="transition-all duration-300">
                     <ChartRenderer chart={chart} />
                   </div>
                 ))}

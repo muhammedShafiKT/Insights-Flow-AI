@@ -11,6 +11,7 @@ import AppLayout from '../pages/user/Layout/Applayout.jsx'
 import Dashboard from '../pages/user/dashboard/dashboard.jsx'
 import ChartSelectorPage from '../pages/user/dashboard/Chartselectorpage.jsx'
 import ChatPage from '../pages/user/datasets/Chatpage.jsx'
+import Profile from '../pages/user/auth/Profile.jsx'
 
 function Approutes() {
   return (
@@ -21,6 +22,7 @@ function Approutes() {
     <Route path='/register' Component={Register} />
     <Route path='/forgot-password' Component={ForgotPassword} />
     <Route path='/verify-otp' Component={VerifyOtp} />
+    <Route path="/profile" Component={Profile}/>
     
     
       <Route
@@ -75,6 +77,11 @@ function Approutes() {
           </AppLayout>
         }
       />
+      // Approutes.jsx — add this route, keep everything else you already have
+<Route
+  path='/print/datasets/:id/dashboard'
+  element={<Dashboard printMode />}
+/>
    
     
    </Routes>

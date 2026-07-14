@@ -1,30 +1,45 @@
 export function validateProfile(profile){
 
+    const MAX_MISSING_PERCENT = 50
+
     const validation = {
-        numericColumns : [] ,
-        categoricalColumns : [],
-        datetimeColumns :[],
-        availableAnalysis :[],
-        warnings : []
+        numericColumns: [],
+        categoricalColumns: [],
+        groupableCategoricalColumns: [], // subset safe for comparison/frequency charts
+        datetimeColumns: [],
+        availableAnalysis: [],
+        warnings: []
     }
 
-    for(const [columnName, columnProfile] of Object.entries(profile)){
+    for (const [columnName, columnProfile] of Object.entries(profile)) {
         if (columnProfile.isIdentifier) continue // skip identifiers entirely
 
-        switch (columnProfile.type){
-            case "numeric" :
+        if (columnProfile.missingPercent > MAX_MISSING_PERCENT) {
+            validation.warnings.push(`${columnName} is ${columnProfile.missingPercent}% missing — excluded from analysis`)
+            continue
+        }
+
+        if (columnProfile.wasNumericLikeCategorical) {
+            validation.warnings.push(`${columnName}: numeric-looking column reclassified as categorical (low cardinality)`)
+        }
+
+        switch (columnProfile.type) {
+            case "numeric":
                 validation.numericColumns.push(columnName)
                 break
 
-            case "categorical" :
+            case "categorical":
                 validation.categoricalColumns.push(columnName)
+                if (columnProfile.subType !== "high-cardinality-text" && columnProfile.subType !== "email") {
+                    validation.groupableCategoricalColumns.push(columnName)
+                }
                 break
 
-            case "datetime" :
+            case "datetime":
                 validation.datetimeColumns.push(columnName)
                 break
 
-            default :
+            default:
                 validation.warnings.push(`unknown type for column ${columnName}`)
         }
     }
@@ -37,15 +52,15 @@ export function validateProfile(profile){
         validation.availableAnalysis.push("correlation")
     }
 
-    // --- MULTI-VARIABLE RELATIONSHIPS (Requires explicit metrics) ---
-    if (validation.numericColumns.length >= 1 && validation.categoricalColumns.length >= 1) {
+    // --- MULTI-VARIABLE RELATIONSHIPS ---
+    if (validation.numericColumns.length >= 1 && validation.groupableCategoricalColumns.length >= 1) {
         validation.availableAnalysis.push("comparison")
     }
     if (validation.numericColumns.length >= 1 && validation.datetimeColumns.length >= 1) {
         validation.availableAnalysis.push("trend")
     }
 
-    if (validation.categoricalColumns.length >= 1) {
+    if (validation.groupableCategoricalColumns.length >= 1) {
         validation.availableAnalysis.push("frequency")
     }
     if (validation.datetimeColumns.length >= 1) {

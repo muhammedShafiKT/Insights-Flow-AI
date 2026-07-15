@@ -1,7 +1,7 @@
 import React from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { ChartCard, CustomTooltip, ChartGradients, GRID_COLOR, PRIMARY_ACCENT, TICK_STYLE_SM } from "../ChartCard";
-import { buildHistogram } from "../chartUtils";
+import { ChartCard, CustomTooltip, ChartGradients, GRID_COLOR, PRIMARY_ACCENT, TICK_STYLE_SM } from "../chartCard.jsx";
+import { buildHistogram } from "../chartUtils.jsx";
 
 export const DistributionChartView = React.memo(function DistributionChartView({ chart, insight }) {
   const { data, title } = chart;

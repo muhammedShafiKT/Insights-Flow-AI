@@ -1,7 +1,7 @@
 import React from "react";
 import { ResponsiveContainer, ScatterChart, Scatter, ComposedChart, Line, ZAxis, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartCard, CustomTooltip, GRID_COLOR, PRIMARY_ACCENT, SECONDARY_ACCENT, TICK_STYLE } from "../ChartCard";
-import { linearRegression, sampleData } from "../chartUtils";
+import { linearRegression, sampleData } from "../chartUtils.jsx";
 
 function SampleToggle({ totalCount, shownCount, showingAll, onToggle }) {
   if (totalCount <= shownCount && !showingAll) return null; // nothing was ever sampled out

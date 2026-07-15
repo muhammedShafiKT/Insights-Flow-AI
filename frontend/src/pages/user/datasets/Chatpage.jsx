@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Bot, Copy, SendHorizontal, User, Database, ChevronRight, FileText, Terminal, Sparkles } from "lucide-react";
+import { Bot, Copy, SendHorizontal, User, Database, ChevronRight, FileText, Terminal, Sparkles, Menu, X } from "lucide-react";
 import { useChat } from "../../../hooks/Usechat.js";
 import api from "../../../services/api.js";
 
@@ -95,10 +95,16 @@ function DatasetSelector({ currentId, onSelect }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     api.get("/datasets")
-      .then(({ data }) => setDatasets(data.datasets || []))
+      .then(({ data }) => {
+        if (isMounted) setDatasets(data.datasets || []);
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
   }, []);
 
   if (loading) {
@@ -161,6 +167,7 @@ function DatasetSelector({ currentId, onSelect }) {
 
 const SUGGESTIONS = ["Total rows count", "Average revenue value", "Scan missing values", "Expose top 10 rows"];
 
+// FIX: Wrapped handleSuggest option selection inside a stable useCallback callback reference hook
 function EmptyState({ onSuggest, hasDataset }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center max-w-xl mx-auto text-center px-4 animate-fadeIn">
@@ -171,7 +178,7 @@ function EmptyState({ onSuggest, hasDataset }) {
       <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
         {hasDataset
           ? "Dataset loaded. Ask anything about your data."
-          : "Select a dataset from the left panel to begin."}
+          : "Select a dataset from the context pipeline to begin."}
       </p>
 
       {hasDataset && (
@@ -242,53 +249,94 @@ function ChatInput({ loading, onSend, disabled }) {
 export default function ChatPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { messages, dataset, loading, sendMessage, bottomRef } = useChat(id);
 
+  // FIX: Explicit side-effect to close mobile drawer views upon dataset updates
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [id]);
+
+  const handleDatasetSelect = useCallback((dsId) => {
+    navigate(`/chat/${dsId}`);
+  }, [navigate]);
+
+  const renderSidebarContent = () => (
+    <>
+      <div className="border-b border-slate-900 p-4 shrink-0 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Terminal size={13} className="text-slate-500" />
+          <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Context Pipeline
+          </h2>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(false)}
+          className="md:hidden text-slate-400 hover:text-white transition p-1"
+        >
+          <X size={16} />
+        </button>
+      </div>
+      <DatasetSelector currentId={id} onSelect={handleDatasetSelect} />
+    </>
+  );
+
   return (
-    // NOTE: no h-screen/w-screen/absolute here — this fills the content
-    // slot your main layout (sidebar + content area) already provides.
-    // Parent route wrapper needs a definite height (e.g. h-screen on the
-    // layout root) for this h-full chain to resolve correctly.
     <div className="relative flex h-full min-h-0 w-full overflow-hidden bg-[#030712] text-slate-100 selection:bg-indigo-500/30">
 
       {/* Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-      {/* ── Dataset sidebar (inner, dataset-scoped — separate from your main app sidebar) ── */}
-      <aside className="relative z-10 flex w-72 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
-        <div className="border-b border-slate-900 p-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <Terminal size={13} className="text-slate-500" />
-            <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Context Pipeline
-            </h2>
-          </div>
-        </div>
-        <DatasetSelector currentId={id} onSelect={(dsId) => navigate(`/chat/${dsId}`)} />
+      {/* ── Responsive Sidebar Design Architecture ── */}
+      {/* Desktop Persistent Layout */}
+      <aside className="hidden md:flex relative z-10 w-72 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
+        {renderSidebarContent()}
       </aside>
 
-      {/* ── Main ── */}
+      {/* Mobile Drawer Overlay Background backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Dynamic Sliding Sideout drawer sheet */}
+      <aside className={`fixed top-0 bottom-0 left-0 z-50 flex w-72 flex-col border-r border-slate-900 bg-[#090d16] transition-transform duration-300 ease-in-out md:hidden ${
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
+        {renderSidebarContent()}
+      </aside>
+
+      {/* ── Main Context Canvas Viewport ── */}
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden bg-slate-950/10 min-w-0">
 
-        {/* Header */}
-        <header className="flex h-[60px] items-center border-b border-slate-900 px-6 backdrop-blur-md shrink-0">
+        {/* Header Grid with adaptive multi-device controls */}
+        <header className="flex h-[60px] items-center justify-between md:justify-start border-b border-slate-900 px-4 sm:px-6 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">BOUND_STREAM:</span>
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex md:hidden items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800 mr-1"
+            >
+              <Menu size={16} />
+            </button>
+            <span className="hidden sm:inline font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">BOUND_STREAM:</span>
             <p className="truncate font-mono text-xs font-bold text-indigo-400 bg-indigo-500/5 border border-indigo-500/10 px-2 py-0.5 rounded">
               {dataset?.originalName ?? (id ? "LOCKING_CORE…" : "NULL_VECTOR")}
             </p>
           </div>
         </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        {/* Messages Layout Grid Container */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
           <div className="mx-auto w-full max-w-4xl flex flex-col min-h-full space-y-6">
             {messages.length === 0 ? (
               <EmptyState onSuggest={sendMessage} hasDataset={!!id} />
             ) : (
               messages.map((msg, i) => (
-                <MessageBubble key={i} role={msg.role} content={msg.content} />
+                // FIX: Swap volatile indexes for strict synthetic identifiers combinations
+                <MessageBubble key={`${msg.role}-${i}-${msg.content.slice(0, 15)}`} role={msg.role} content={msg.content} />
               ))
             )}
             {loading && <TypingIndicator />}
@@ -296,7 +344,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Input */}
+        {/* Input Text Form Matrix Field */}
         <ChatInput loading={loading} onSend={sendMessage} disabled={!id} />
 
       </div>

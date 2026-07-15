@@ -1,6 +1,6 @@
 import React from "react";
 import { ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { ChartCard, CustomTooltip, ChartGradients, GRID_COLOR, PALETTE, TICK_STYLE } from "../ChartCard";
+import { ChartCard, CustomTooltip, ChartGradients, GRID_COLOR, PALETTE, TICK_STYLE } from "../chartCard.jsx";
 
 const LIMIT_STEPS = [10, 20, Infinity]; // Infinity = "All"
 

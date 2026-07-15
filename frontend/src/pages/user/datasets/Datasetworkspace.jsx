@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import UploadZone from "./UploadZone";
-import RecentUploads from "./RecentUploads";
-import DataPreview from "./DataPreview";
+import UploadZone from "./Uploadzone.jsx";
+import RecentUploads from "./Recentuploads.jsx";
+import DataPreview from "./Datapreview.jsx";
 import api from "../../../services/api.js"
 import { socket } from "../../../services/socket.js";
 import {

@@ -1,6 +1,6 @@
 import React from "react";
 import { ResponsiveContainer, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { ChartCard, CustomTooltip, ChartGradients, GRID_COLOR, PRIMARY_ACCENT, SECONDARY_ACCENT, TICK_STYLE } from "../ChartCard";
+import { ChartCard, CustomTooltip, ChartGradients, GRID_COLOR, PRIMARY_ACCENT, SECONDARY_ACCENT, TICK_STYLE } from "../chartCard.jsx";
 
 export const LineChartView = React.memo(function LineChartView({ chart, insight }) {
   const { xField, yField, title } = chart;

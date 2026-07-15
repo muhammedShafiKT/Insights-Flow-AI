@@ -79,14 +79,14 @@ const authService = {
 
         res.cookie("accesstoken", accesstoken, {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+            secure: true,
+            sameSite: "none",
             maxAge: 15 * 60 * 1000
         })
         res.cookie("refreshtoken", refreshtoken, {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+              secure: true,
+            sameSite: "none",
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
@@ -128,14 +128,14 @@ const authService = {
 
         res.cookie("accesstoken", accesstoken, {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+             secure: true,
+            sameSite: "none",
             maxAge: 15 * 60 * 1000
         })
         res.cookie("refreshtoken", refreshtoken, {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+             secure: true,
+            sameSite: "none",
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
@@ -169,8 +169,8 @@ const authService = {
         const accesstoken = generateAccesstoken(user)
         res.cookie("accesstoken", accesstoken, {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+             secure: true,
+            sameSite: "none",
             maxAge: 15 * 60 * 1000
         })
 
@@ -225,13 +225,13 @@ const authService = {
 
         res.clearCookie("accesstoken", {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+             secure: true,
+            sameSite: "none",
         })
         res.clearCookie("refreshtoken", {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+             secure: true,
+            sameSite: "none",
         })
 
         return { message: "Logout successful" }
@@ -295,14 +295,14 @@ const authService = {
 
     res.cookie("accesstoken", accesstoken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+         secure: true,
+            sameSite: "none",
         maxAge: 15 * 60 * 1000
     })
     res.cookie("refreshtoken", refreshtoken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+         secure: true,
+            sameSite: "none",
         maxAge: 7 * 24 * 60 * 60 * 1000
     })
 

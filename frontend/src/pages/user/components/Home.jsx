@@ -42,7 +42,6 @@ const features = [
   },
 ]
 
-// Deterministic bar heights for the terminal chart (no randomness => stable render)
 const bars = [
   20, 28, 18, 35, 30, 45, 40, 55, 50, 65, 58, 72, 68, 80, 75, 88, 82, 95, 90,
   98, 92, 85, 78, 70,

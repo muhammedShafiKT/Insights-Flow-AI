@@ -31,15 +31,6 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  // {
-  //   label: "Reports",
-  //   to: "/reports",
-  //   icon: (
-  //     <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-  //       <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5h3.75V21H3v-7.5zM10.125 8.25h3.75V21h-3.75V8.25zM17.25 3h3.75v18h-3.75V3z" />
-  //     </svg>
-  //   ),
-  // },
   {
     label: "Settings",
     to: "/profile",
@@ -56,6 +47,8 @@ export default function Sidebar({
   workspaceName = "InsightFlow AI",
   planLabel = "Pro Workspace",
   isCollapsed = false,
+  isMobileOpen = false,
+  onCloseMobile,
 }) {
   const user = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
@@ -75,39 +68,50 @@ export default function Sidebar({
 
   return (
     <aside 
-      className={`flex h-screen flex-col border-r border-slate-800/60 bg-slate-950 transition-all duration-300 ease-in-out select-none ${
-        isCollapsed ? "w-16" : "w-72"
-      }`}
+      className={`
+        fixed inset-y-0 left-0 z-50 md:sticky flex h-screen flex-col border-r border-slate-800/60 bg-slate-950 transition-all duration-300 ease-in-out select-none
+        
+        /* Mobile placement styles */
+        w-72 max-w-[80vw] ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+        
+        /* Desktop placement resets and overrides */
+        md:translate-x-0 ${isCollapsed ? "md:w-16" : "md:w-72"}
+      `}
     >
       {/* Top Brand Container */}
-      <div className={`shrink-0 flex flex-col justify-center px-4 h-16 border-b border-slate-800/50 ${isCollapsed ? "items-center" : "pl-6"}`}>
-        {!isCollapsed ? (
-          <div className="animate-fadeIn">
-            <h1 className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-indigo-400 tracking-tight">
-              {workspaceName}
-            </h1>
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
-              {planLabel}
-            </p>
-          </div>
-        ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-xs font-black text-indigo-400 shadow-md shadow-indigo-500/5">
-            IF
-          </div>
-        )}
+      <div className={`shrink-0 flex items-center justify-between px-4 h-16 border-b border-slate-800/50 ${isCollapsed ? "md:justify-center" : "md:pl-6"}`}>
+        {/* On Mobile, or when Expanded on Desktop */}
+        <div className={`animate-fadeIn ${isCollapsed ? "md:hidden" : "block"}`}>
+          <h1 className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-indigo-400 tracking-tight">
+            {workspaceName}
+          </h1>
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
+            {planLabel}
+          </p>
+        </div>
+
+        {/* Small "IF" Icon: Visible ONLY when Collapsed on Desktop */}
+        <div className={`hidden h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-xs font-black text-indigo-400 shadow-md shadow-indigo-500/5 ${isCollapsed ? "md:flex" : "md:hidden"}`}>
+          IF
+        </div>
+
+        {/* Mobile Close Button (Hidden on Desktop) */}
+        <button
+          type="button"
+          onClick={onCloseMobile}
+          className="flex md:hidden h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-900 hover:text-slate-300"
+          aria-label="Close menu"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l18 18" />
+          </svg>
+        </button>
       </div>
 
       {/* Navigation Space */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
         <nav className="space-y-1">
           {NAV_ITEMS.map((item) => {
-            // Active matching is segment-based, not prefix-based, so a route
-            // like /datasets/:id/dashboard correctly highlights "Dashboard"
-            // instead of "Datasets". Each item is active only if its own
-            // segment is the LAST matching nav segment in the path — i.e.
-            // whichever of our routes appears furthest along the URL wins.
-            // This means /datasets/:id/dashboard → "dashboard" wins over
-            // "datasets" because it comes later in the path.
             const pathSegments = location.pathname.split("/").filter(Boolean);
             const itemSegment = item.to.replace(/^\//, "");
 
@@ -121,10 +125,14 @@ export default function Sidebar({
               <NavLink
                 key={item.to}
                 to={item.to}
+                // Close the mobile navigation sheet instantly upon switching routes
+                onClick={() => onCloseMobile?.()}
                 title={isCollapsed ? item.label : undefined}
                 className={
                   `flex items-center rounded-xl font-medium transition-all duration-200 group relative ${
-                    isCollapsed ? "h-10 w-10 justify-center mx-auto" : "px-4 py-2.5 gap-3 text-sm"
+                    isCollapsed ? "md:h-10 md:w-10 md:justify-center md:mx-auto" : ""
+                  } ${
+                    !isCollapsed ? "px-4 py-2.5 gap-3 text-sm" : "px-4 py-2.5 gap-3 text-sm md:px-0 md:gap-0"
                   } ${
                     isActive
                       ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/10"
@@ -134,11 +142,10 @@ export default function Sidebar({
               >
                 {item.icon}
 
-                {!isCollapsed && (
-                  <span className="truncate transition-opacity duration-200 animate-fadeIn">
-                    {item.label}
-                  </span>
-                )}
+                {/* Hide text dynamically on desktop if layout is collapsed, always display on mobile drawer */}
+                <span className={`truncate transition-opacity duration-200 animate-fadeIn ${isCollapsed ? "md:hidden" : "block"}`}>
+                  {item.label}
+                </span>
               </NavLink>
             );
           })}
@@ -146,12 +153,15 @@ export default function Sidebar({
       </div>
 
       {/* Footer Profile Layer */}
-      <div className={`border-t border-slate-800/60 bg-slate-950 p-3 flex flex-col gap-2 ${isCollapsed ? "items-center" : ""}`}>
+      <div className={`border-t border-slate-800/60 bg-slate-950 p-3 flex flex-col gap-2 ${isCollapsed ? "md:items-center" : ""}`}>
         <NavLink
           to="/profile"
+          onClick={() => onCloseMobile?.()}
           title={isCollapsed ? `${user?.name || 'User'} (${user?.email})` : undefined}
           className={`flex items-center rounded-xl hover:bg-slate-900/60 transition-colors ${
-            isCollapsed ? "h-10 w-10 justify-center" : "p-2.5 gap-3"
+            isCollapsed ? "md:h-10 md:w-10 md:justify-center" : ""
+          } ${
+            !isCollapsed ? "p-2.5 gap-3" : "p-2.5 gap-3 md:p-0 md:gap-0"
           }`}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold overflow-hidden shadow-inner">
@@ -166,29 +176,32 @@ export default function Sidebar({
             )}
           </div>
 
-          {!isCollapsed && (
-            <div className="min-w-0 flex-1 animate-fadeIn">
-              <p className="truncate text-xs font-semibold text-slate-200">
-                {user?.name || "User Frame"}
-              </p>
-              <p className="truncate text-[10px] text-slate-500 font-medium mt-0.5">
-                {user?.email || "user@insightflow.ai"}
-              </p>
-            </div>
-          )}
+          <div className={`min-w-0 flex-1 animate-fadeIn ${isCollapsed ? "md:hidden" : "block"}`}>
+            <p className="truncate text-xs font-semibold text-slate-200">
+              {user?.name || "User Frame"}
+            </p>
+            <p className="truncate text-[10px] text-slate-500 font-medium mt-0.5">
+              {user?.email || "user@insightflow.ai"}
+            </p>
+          </div>
         </NavLink>
 
         <button
           onClick={handleLogout}
           title={isCollapsed ? "Logout Account" : undefined}
           className={`flex items-center justify-center rounded-xl border border-rose-500/10 text-rose-400/90 transition-all hover:bg-rose-500/10 hover:text-rose-400 ${
-            isCollapsed ? "h-10 w-10 p-0 border-none" : "w-full px-3 py-2 text-xs font-medium mt-1"
+            isCollapsed ? "md:h-10 md:w-10 md:p-0 md:border-none" : ""
+          } ${
+            !isCollapsed ? "w-full px-3 py-2 text-xs font-medium mt-1" : "w-full px-3 py-2 text-xs font-medium mt-1 md:w-auto md:px-0 md:py-0 md:mt-0"
           }`}
         >
           {isCollapsed ? (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-            </svg>
+            <>
+              <svg className="hidden md:block h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+              </svg>
+              <span className="block md:hidden">Logout Account</span>
+            </>
           ) : (
             "Logout Account"
           )}

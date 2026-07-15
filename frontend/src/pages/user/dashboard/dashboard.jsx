@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getDashboard, exportDashboardPdf } from "../../../services/dashboard.api.js";
 import ChartRenderer from "./charts/chartRenderer.jsx";
 import api from "../../../services/api.js";
 import { socket } from "../../../services/socket.js";
-import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw, Loader2, Download } from "lucide-react";
+import { Database, FileText, ChevronRight, LayoutDashboard, RefreshCw, Loader2, Download, Menu, X } from "lucide-react";
 
 // ─── Dataset Selector Sidebar ─────────────────────────────────────────────────
 
@@ -173,9 +173,6 @@ function computeExecutiveMetrics(charts = []) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-// printMode strips the dataset sidebar and export button — used by the
-// Puppeteer-only /print/datasets/:id/dashboard route so exported PDFs
-// contain just the dashboard content, nothing else.
 export default function Dashboard({ printMode = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -184,12 +181,14 @@ export default function Dashboard({ printMode = false }) {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Drawer State
 
   const [job, setJob] = useState(null);
   const jobRef = useRef(job);
   jobRef.current = job;
 
-  const loadDashboard = () => {
+  // FIX: Wrapped in useCallback to guarantee stable event listener attachments
+  const loadDashboard = useCallback(() => {
     if (!id) return;
     setIsLoading(true);
     setError(null);
@@ -198,9 +197,9 @@ export default function Dashboard({ printMode = false }) {
       .then(setDashboard)
       .catch((err) => setError(err.response?.data?.message || "Failed to load dashboard"))
       .finally(() => setIsLoading(false));
-  };
+  }, [id]);
 
-  const checkJobOnce = async () => {
+  const checkJobOnce = useCallback(async () => {
     try {
       const { data } = await api.get(`/datasets/${id}/dashboard/job`);
 
@@ -221,7 +220,7 @@ export default function Dashboard({ printMode = false }) {
       setJob(null);
       loadDashboard();
     }
-  };
+  }, [id, loadDashboard]);
 
   useEffect(() => {
     if (!id) return;
@@ -229,6 +228,7 @@ export default function Dashboard({ printMode = false }) {
     setError(null);
     setDashboard(null);
     setJob(null);
+    setIsSidebarOpen(false); // Close mobile menu drawer on selection change
 
     checkJobOnce();
 
@@ -259,25 +259,26 @@ export default function Dashboard({ printMode = false }) {
       socket.off("dashboard:progress", handleProgress);
       socket.off("connect", handleConnect);
     };
-  }, [id]);
+  }, [id, checkJobOnce, loadDashboard]);
 
   const handleExport = async () => {
     if (!id || isExporting) return;
     setIsExporting(true);
+    const a = document.createElement("a");
     try {
       const blob = await exportDashboardPdf(id);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
       a.href = url;
       a.download = `dashboard-${id}.pdf`;
       document.body.appendChild(a);
       a.click();
-      a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failed:", err);
       setError("Failed to export dashboard as PDF");
     } finally {
+      // FIX: Safe runtime removal prevents DOM fragments leaking if streaming crashes
+      if (document.body.contains(a)) a.remove();
       setIsExporting(false);
     }
   };
@@ -285,33 +286,81 @@ export default function Dashboard({ printMode = false }) {
   const hasCharts = dashboard?.charts?.length > 0;
   const summaryMeta = hasCharts ? computeExecutiveMetrics(dashboard.charts) : null;
 
+  const renderSidebarContent = () => (
+    <>
+      <div className="border-b border-slate-900 p-4 shrink-0 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Database size={13} className="text-slate-500" />
+          <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">Datasets</h2>
+        </div>
+        {!printMode && (
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden text-slate-400 hover:text-white transition p-1"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+      <DatasetSelector
+        currentId={id}
+        onSelect={(dsId) => navigate(`/datasets/${dsId}/dashboard`)}
+      />
+    </>
+  );
+
   return (
     <div className="relative flex h-full min-h-0 w-full overflow-hidden bg-[#030712] text-slate-100 selection:bg-indigo-500/30">
 
       {/* Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-      {/* ── Dataset sidebar — hidden in print mode ── */}
+      {/* ── Responsive Sidebar Navigation ── */}
       {!printMode && (
-        <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
-          <div className="border-b border-slate-900 p-4 shrink-0">
-            <div className="flex items-center gap-2">
-              <Database size={13} className="text-slate-500" />
-              <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">Datasets</h2>
-            </div>
-          </div>
-          <DatasetSelector
-            currentId={id}
-            onSelect={(dsId) => navigate(`/datasets/${dsId}/dashboard`)}
-          />
-        </aside>
+        <>
+          {/* Desktop Persistent Sidebar */}
+          <aside className="hidden md:flex relative z-10 w-64 shrink-0 flex-col border-r border-slate-900 bg-slate-950/40 backdrop-blur-md">
+            {renderSidebarContent()}
+          </aside>
+
+          {/* Mobile Overlay Background */}
+          {isSidebarOpen && (
+            <div 
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+
+          {/* Mobile Sliding Slideout Drawer */}
+          <aside className={`fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-slate-900 bg-[#090d16] transition-transform duration-300 ease-in-out md:hidden ${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}>
+            {renderSidebarContent()}
+          </aside>
+        </>
       )}
 
-      {/* ── Main ── */}
+      {/* ── Main Context Viewport ── */}
       <div className="relative z-10 flex flex-1 flex-col overflow-y-auto min-w-0">
 
+        {/* Responsive Navbar Displayed on Mobile Devices only */}
+        {!printMode && (
+          <header className="flex md:hidden items-center justify-between border-b border-slate-900 bg-slate-950/40 backdrop-blur-md p-4 shrink-0 sticky top-0 z-30">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+            >
+              <Menu size={16} />
+            </button>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              System Dashboard
+            </span>
+            <div className="w-9 h-9" /> {/* Visual layout balancing space element */}
+          </header>
+        )}
+
         {!id && (
-          <div className="flex flex-1 items-center justify-center font-mono text-xs text-slate-600">
+          <div className="flex flex-1 items-center justify-center font-mono text-xs text-slate-600 p-4 text-center">
             SELECT A DATASET TO VIEW ITS DASHBOARD
           </div>
         )}
@@ -321,7 +370,7 @@ export default function Dashboard({ printMode = false }) {
         )}
 
         {id && !job && isLoading && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 font-mono text-xs text-slate-500">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 font-mono text-xs text-slate-500 p-4 text-center">
             <div className="relative flex h-5 w-5 items-center justify-center">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-500 opacity-25" />
               <span className="relative inline-flex h-3 w-3 rounded-full bg-indigo-600" />
@@ -331,7 +380,7 @@ export default function Dashboard({ printMode = false }) {
         )}
 
         {id && !job && !isLoading && error && (
-          <div className="flex flex-1 items-center justify-center p-8">
+          <div className="flex flex-1 items-center justify-center p-4 sm:p-8">
             <div className="w-full max-w-md rounded-2xl border border-rose-950 bg-rose-950/10 p-5">
               <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-rose-400 mb-2">
                 CRITICAL_CORE_EXCEPTION
@@ -345,44 +394,38 @@ export default function Dashboard({ printMode = false }) {
           <GenerateDashboardPanel id={id} />
         )}
 
-        {/* Dashboard charts — data-dashboard-ready is the marker Puppeteer
-            waits on before taking the PDF snapshot. Only flips true once
-            charts are actually in the DOM. */}
         {id && !job && !isLoading && !error && hasCharts && (
           <div
             data-dashboard-ready="true"
-            className="relative mx-auto w-full max-w-7xl px-6 py-10 md:px-8"
+            className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10"
           >
             <div className="relative">
-              <header className="mb-10 flex flex-col gap-2 border-b border-slate-900 pb-8">
-                <div className="flex items-center gap-3">
+              <header className="mb-8 flex flex-col gap-4 border-b border-slate-900 pb-6 sm:mb-10 sm:pb-8">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <span className="rounded bg-indigo-500/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
                     Live Framework
                   </span>
-                  <span className="h-1 w-1 rounded-full bg-slate-700" />
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">ID: {id}</p>
+                  <span className="hidden sm:inline h-1 w-1 rounded-full bg-slate-700" />
+                  <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-500 truncate max-w-xs">
+                    ID: {id}
+                  </p>
                 </div>
-                <div className="flex items-start justify-between gap-4">
-                  <h1 className="text-2xl font-black tracking-tight text-slate-100 sm:text-3xl">
+                
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <h1 className="text-xl font-black tracking-tight text-slate-100 sm:text-2xl lg:text-3xl break-words max-w-xl">
                     {dashboard.title || "Operational Intelligence Canvas"}
                   </h1>
 
-                  {/* Regenerate + Export — hidden in print mode, no point
-                      showing interactive controls inside a PDF */}
                   {!printMode && (
-                    <div className="mt-1 flex shrink-0 items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:mt-1 shrink-0">
                       <button
                         onClick={handleExport}
                         disabled={isExporting}
                         title="Export as PDF"
                         className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isExporting ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <Download size={12} />
-                        )}
-                        {isExporting ? "Exporting…" : "Export PDF"}
+                        {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                        <span>{isExporting ? "Exporting…" : "Export PDF"}</span>
                       </button>
 
                       <button
@@ -391,17 +434,18 @@ export default function Dashboard({ printMode = false }) {
                         className="flex items-center gap-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-400 transition hover:bg-indigo-500/20"
                       >
                         <RefreshCw size={12} />
-                        Regenerate
+                        <span>Regenerate</span>
                       </button>
                     </div>
                   )}
                 </div>
-                <p className="text-sm text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-400">
                   Interactive high-fidelity analysis matrix synthesizing multi-source target datasets.
                 </p>
               </header>
 
-              <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* Responsive Metric Layout Layer */}
+              <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:mb-8">
                 <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/5 blur-xl" />
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Charts Generated</p>
@@ -409,12 +453,10 @@ export default function Dashboard({ printMode = false }) {
                     <span className="font-mono text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-300">
                       {summaryMeta.chartCount}
                     </span>
-                    <span className="text-[10px] font-medium text-slate-500">visualizations in this dashboard</span>
+                    <span className="text-[10px] font-medium text-slate-500">visualizations</span>
                   </div>
-                  <p className="text-xs leading-relaxed text-slate-400">
-                    {summaryMeta.typeBreakdown.length > 0
-                      ? summaryMeta.typeBreakdown.join(" · ")
-                      : "No chart types detected."}
+                  <p className="text-xs leading-relaxed text-slate-400 truncate">
+                    {summaryMeta.typeBreakdown.length > 0 ? summaryMeta.typeBreakdown.join(" · ") : "No chart types detected."}
                   </p>
                 </div>
 
@@ -425,21 +467,18 @@ export default function Dashboard({ printMode = false }) {
                     <span className="font-mono text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-300">
                       {summaryMeta.totalDataPoints}
                     </span>
-                    <span className="text-[10px] font-medium text-slate-500">total values rendered across charts</span>
+                    <span className="text-[10px] font-medium text-slate-500">total values rendered</span>
                   </div>
                 </div>
 
-                <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
+                <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md sm:col-span-2 lg:col-span-1">
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/5 blur-xl" />
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Top Insight</p>
                   {summaryMeta.topInsight ? (
                     <p className="text-xs leading-relaxed text-slate-400">
-                      <span className="font-semibold text-emerald-400">"{summaryMeta.topInsight.label}"</span>{" "}
-                      leads at{" "}
-                      <span className="font-mono font-bold text-slate-200">
-                        {summaryMeta.topInsight.value.toLocaleString()}
-                      </span>{" "}
-                      in <span className="text-slate-300">{summaryMeta.topInsight.chartTitle}</span>
+                      <span className="font-semibold text-emerald-400">"{summaryMeta.topInsight.label}"</span> leads at{" "}
+                      <span className="font-mono font-bold text-slate-200">{summaryMeta.topInsight.value.toLocaleString()}</span> in{" "}
+                      <span className="text-slate-300">{summaryMeta.topInsight.chartTitle}</span>
                     </p>
                   ) : (
                     <p className="text-xs text-slate-500">No scalable outliers in current stream batch.</p>
@@ -447,16 +486,18 @@ export default function Dashboard({ printMode = false }) {
                 </div>
               </section>
 
-              <main className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {dashboard.charts.map((chart, index) => (
-                  <div key={index} data-chart-card className="transition-all duration-300">
+              {/* Main Adaptive Grid Grid */}
+              <main className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+                {dashboard.charts.map((chart) => (
+                  // FIX: Used unique internal item dynamic properties instead of array loop indices
+                  <div key={chart._id || chart.id || chart.title} data-chart-card className="transition-all duration-300 min-w-0">
                     <ChartRenderer chart={chart} />
                   </div>
                 ))}
               </main>
 
-              <footer className="mt-16 border-t border-slate-900 pt-6 text-center">
-                <p className="font-mono text-[10px] text-slate-600 tracking-wider uppercase">
+              <footer className="mt-12 border-t border-slate-900 pt-6 text-center sm:mt-16">
+                <p className="font-mono text-[9px] sm:text-[10px] text-slate-600 tracking-wider uppercase">
                   System Canvas Operational Architecture · Protocol Stable
                 </p>
               </footer>
